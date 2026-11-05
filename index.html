@@ -1,0 +1,745 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Boodschappen">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
+<title>Boodschappenlijst</title>
+<meta name="theme-color" content="#101418">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Bjorn huisstijl: één smalle kolom als notitieblok, tabs bovenaan. Donker is standaard. */
+:root {
+  --bg:#101418; --surface:#2C3E50; --surface-2:#243445; --input:#22313F;
+  --line:rgba(220,201,166,.17); --line-2:rgba(220,201,166,.09);
+  --fg:#FBF6EE; --muted:#CBB994; --champ:#DCC9A6;
+  --accent:#B08D57; --accent-fg:#101418; --accent-soft:rgba(176,141,87,.18);
+  --pos:#8DBF98; --neg:#E0907E; --warn:#D9AE63;
+  --shadow:0 1px 2px rgba(0,0,0,.22);
+  --font-display:'Inter',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-body:'Inter',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+  --r:14px; --r-sm:10px;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  --bg:#F6F1E8; --surface:#FFFDF9; --surface-2:#F3ECE0; --input:#FFFFFF;
+  --line:#E4D9C6; --line-2:#EEE6D8;
+  --fg:#101418; --muted:#6E6253; --champ:#B08D57;
+  --accent:#8E6E3E; --accent-fg:#FBF6EE; --accent-soft:#F1E7D4;
+  --pos:#4E7F5A; --neg:#A9503E; --warn:#A57524;
+  --shadow:0 1px 2px rgba(16,20,24,.05),0 4px 14px rgba(16,20,24,.04); color-scheme:light } }
+:root[data-theme="light"] {
+  --bg:#F6F1E8; --surface:#FFFDF9; --surface-2:#F3ECE0; --input:#FFFFFF;
+  --line:#E4D9C6; --line-2:#EEE6D8;
+  --fg:#101418; --muted:#6E6253; --champ:#B08D57;
+  --accent:#8E6E3E; --accent-fg:#FBF6EE; --accent-soft:#F1E7D4;
+  --pos:#4E7F5A; --neg:#A9503E; --warn:#A57524;
+  --shadow:0 1px 2px rgba(16,20,24,.05),0 4px 14px rgba(16,20,24,.04); color-scheme:light }
+
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.45 var(--font-body);
+  -webkit-font-smoothing: antialiased; font-feature-settings: "cv11","ss01"; }
+a { color: var(--accent); }
+.wrap { max-width: 540px; margin: 0 auto; padding-block: 22px 36px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 16px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 10px 12px; flex-wrap: wrap; }
+h1 { font: 700 27px/1.15 var(--font-display); margin: 0; letter-spacing: -.025em; text-wrap: balance; }
+.meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.count { color: var(--muted); font-size: .88rem; font-variant-numeric: tabular-nums; }
+.sync { font-size: .8rem; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); opacity: .6; }
+.dot.on { background: var(--pos); opacity: 1; }
+svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.theme { display: inline-flex; align-items: center; gap: 6px; font: 600 .8rem var(--font-body); color: var(--fg);
+  background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px 6px 10px; cursor: pointer; }
+.theme svg.i { width: 16px; height: 16px; color: var(--accent); }
+.theme:hover { border-color: var(--accent); }
+
+.tabs { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--surface); border: 1px solid var(--line-2);
+  border-radius: var(--r); padding: 4px; gap: 4px; }
+.tabs button { font: 600 .88rem var(--font-body); border: 0; border-radius: var(--r-sm); padding: 10px 6px; background: transparent;
+  color: var(--muted); cursor: pointer; }
+.tabs button:hover { background: color-mix(in srgb, var(--champ) 7%, transparent); color: var(--fg); }
+.tabs button[aria-selected="true"] { background: var(--accent-soft); color: var(--fg); box-shadow: inset 0 -2px 0 var(--accent); }
+.tabs button[aria-selected="true"] .count { color: var(--accent); }
+@media (max-width: 460px) { .tabs { grid-template-columns: 1fr 1fr; } }
+
+form.add { display: flex; gap: 8px; flex-wrap: wrap; }
+form.add input { flex: 1 1 160px; min-width: 0; height: 46px; box-sizing: border-box; font: 16px var(--font-body); padding: 0 14px;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--input); color: var(--fg); }
+form.add input::placeholder, .fld input::placeholder { color: var(--muted); opacity: .75; }
+form.add input.small { flex: 0 1 120px; }
+input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+form.add button, .btn { font: 600 .95rem var(--font-body); border: 1px solid var(--accent); border-radius: 12px; padding: 0 18px; min-height: 46px;
+  background: var(--accent); color: var(--accent-fg); cursor: pointer; }
+form.add button:hover, .btn:hover { background: color-mix(in srgb, var(--accent) 86%, white); }
+.btn.ghost { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+.btn.ghost:hover { background: transparent; border-color: var(--accent); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.actions .btn { flex: 1 1 auto; min-height: 42px; padding: 0 12px; font-size: .88rem; }
+
+.list { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r); overflow: hidden; }
+.list li { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--line-2); }
+.list li:first-child { border-top: 0; }
+.check { appearance: none; width: 24px; height: 24px; flex: none; border: 2px solid var(--line); border-radius: 7px; cursor: pointer;
+  display: grid; place-items: center; margin: 0; background: var(--input); }
+.check:hover { border-color: var(--accent); }
+.check:checked { background: var(--accent); border-color: var(--accent); }
+.check:checked::after { content: ""; width: 6px; height: 11px; border: solid var(--accent-fg); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg) translate(-1px,-1px); }
+.name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+li.done .name { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--champ) 45%, transparent); }
+.icon { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 1.15rem; padding: 6px; border-radius: 8px; line-height: 1;
+  display: inline-grid; place-items: center; }
+.icon:hover { color: var(--fg); background: color-mix(in srgb, var(--champ) 9%, transparent); }
+.icon.star.on { color: var(--accent); }
+.tag { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--accent); font-weight: 600;
+  background: var(--accent-soft); border-radius: 999px; padding: 2px 8px; }
+.section-label { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; margin: 4px 2px -8px;
+  display: flex; justify-content: space-between; gap: 8px; }
+.section-label span:last-child:not(:first-child) { font-variant-numeric: tabular-nums; color: var(--fg); }
+.empty { text-align: center; color: var(--muted); padding: 28px 18px; background: var(--surface); border: 1px dashed var(--line); border-radius: var(--r); }
+.empty strong { display: block; color: var(--fg); font: 600 15.5px var(--font-display); letter-spacing: -.01em; margin-bottom: 4px; }
+.toggle { font: 600 .82rem var(--font-body); border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 999px;
+  padding: 6px 12px; cursor: pointer; white-space: nowrap; }
+.toggle:hover { border-color: var(--accent); color: var(--fg); }
+.toggle.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.msg { font-size: .85rem; color: var(--champ); min-height: 1.2em; text-align: center; }
+.confirm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r); padding: 14px 16px; }
+.confirm span { flex: 1 1 200px; font-size: .92rem; }
+.confirm .btn { min-height: 40px; }
+
+/* Challenges: naam + voortgang met een balk en een +1 knop */
+.ch { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+.ch .row { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.ch .num { font-size: .82rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bar { height: 6px; border-radius: 999px; background: color-mix(in srgb, var(--champ) 12%, transparent); overflow: hidden; }
+.bar span { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
+li.done .bar span { background: var(--pos); }
+.step { font: 600 .9rem var(--font-body); border: 1px solid var(--line); background: transparent; color: var(--fg); border-radius: var(--r-sm);
+  min-width: 40px; min-height: 36px; padding: 4px 8px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.step:hover:not(:disabled) { border-color: var(--accent); }
+.step:disabled { opacity: .4; cursor: default; }
+.step.plus { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.step.plus:hover { background: color-mix(in srgb, var(--accent) 86%, white); }
+form.edit { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.fld { display: flex; flex-direction: column; gap: 5px; flex: 1 1 90px; min-width: 0; font-size: 11.5px; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+.fld.wide { flex: 1 1 100%; }
+.fld input { font: 16px var(--font-body); text-transform: none; letter-spacing: 0; height: 44px; box-sizing: border-box; padding: 0 12px;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--input); color: var(--fg); min-width: 0; }
+form.edit .btn { min-height: 44px; padding: 0 14px; font-size: .88rem; }
+
+/* Later kopen: prijs rechts uitgelijnd, totaal bovenaan als gouden hoofdtegel */
+.price { font-variant-numeric: tabular-nums; color: var(--champ); font-size: .92rem; white-space: nowrap; }
+li.done .price { color: var(--muted); }
+.total { display: flex; flex-direction: column; gap: 4px; border-radius: var(--r); padding: 16px 18px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 14%, var(--surface)), var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent); box-shadow: inset 0 2px 0 var(--accent); }
+.total b { order: 2; font: 700 1.75rem/1.1 var(--font-display); letter-spacing: -.025em; font-variant-numeric: tabular-nums; color: var(--accent); }
+.total small { order: 1; color: var(--accent); font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; font-weight: 600; }
+@media (prefers-reduced-motion: no-preference) {
+  .check, .tabs button, .bar span, .btn, .toggle, .step, .icon, .theme, form.add button { transition: background .15s, border-color .15s, color .15s, width .25s; }
+}
+
+/* Login: tijdens het opstarten (boot) of uitgelogd (out) is de app verborgen */
+.login { display: flex; flex-direction: column; gap: 14px; background: var(--surface); border: 1px solid var(--line-2);
+  border-radius: var(--r); padding: 18px 16px; }
+.login p { margin: 0; color: var(--muted); font-size: .9rem; }
+.login .fld { flex: none; }
+.login .btn { min-height: 46px; }
+.login .btn:disabled { opacity: .6; cursor: default; }
+#btnLogout { align-self: center; }
+body.boot .tabs, body.out .tabs, body.boot section, body.out section:not(#viewLogin),
+body.boot .sync, body.out .sync, body.boot #btnLogout, body.out #btnLogout { display: none !important; }
+body:not(.out) #viewLogin { display: none !important; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
+</head>
+<body class="boot">
+
+<div class="wrap">
+  <header>
+    <h1 id="title">Boodschappen</h1>
+    <div class="meta">
+      <span class="sync"><span class="dot" id="dot"></span><span id="syncText">Verbinden…</span></span>
+      <button class="theme" id="btnTheme" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg><span id="themeLbl">Thema: donker</span></button>
+    </div>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tabList" aria-selected="true">Lijstje <span class="count" id="cntList"></span></button>
+    <button role="tab" id="tabStd" aria-selected="false">Vast <span class="count" id="cntStd"></span></button>
+    <button role="tab" id="tabCh" aria-selected="false">Challenges <span class="count" id="cntCh"></span></button>
+    <button role="tab" id="tabBuy" aria-selected="false">Later kopen <span class="count" id="cntBuy"></span></button>
+  </div>
+
+  <section id="viewList">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <form class="add" id="addList">
+        <input id="inList" placeholder="Iets toevoegen, bv. bananen" autocomplete="off" enterkeyhint="done">
+        <button type="submit">Voeg toe</button>
+      </form>
+      <ul class="list" id="ulList"></ul>
+      <div class="empty" id="emptyList" hidden><strong>Je lijstje is leeg</strong>Typ hierboven iets, of zet je vaste items in één keer op de lijst.</div>
+      <div class="actions">
+        <button class="btn ghost" id="btnFill">Vaste items op lijst</button>
+        <button class="btn ghost" id="btnClear">Afgevinkte opruimen</button>
+      </div>
+      <div class="confirm" id="confirmBox" hidden>
+        <span id="confirmText"></span>
+        <button class="btn" id="confirmYes">Ja</button>
+        <button class="btn ghost" id="confirmNo">Annuleer</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="viewStd" hidden>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <form class="add" id="addStd">
+        <input id="inStd" placeholder="Nieuw vast item, bv. melk" autocomplete="off" enterkeyhint="done">
+        <button type="submit">Voeg toe</button>
+      </form>
+      <ul class="list" id="ulStd"></ul>
+      <div class="empty" id="emptyStd" hidden><strong>Nog geen vaste items</strong>Dingen die je elke week koopt zet je hier. Met één knop staan ze dan op je lijstje.</div>
+    </div>
+  </section>
+
+  <section id="viewCh" hidden>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <form class="add" id="addCh">
+        <input id="inCh" placeholder="Nieuwe challenge, bv. 30 dagen geen suiker" autocomplete="off" enterkeyhint="next">
+        <input id="inChGoal" class="small" placeholder="Doel (aantal)" inputmode="numeric" autocomplete="off" enterkeyhint="done" aria-label="Doel, aantal keer of dagen (optioneel)">
+        <button type="submit">Voeg toe</button>
+      </form>
+      <div class="section-label" id="lblChOpen"><span>Bezig</span></div>
+      <ul class="list" id="ulChOpen"></ul>
+      <div class="empty" id="emptyCh" hidden><strong>Nog geen challenges</strong>Zet hier wat je jezelf uitdaagt. Geef een doel op, bv. 30, en tel elke dag met +1 tot je er bent.</div>
+      <div class="section-label" id="lblChDone" hidden><span>Gehaald</span></div>
+      <ul class="list" id="ulChDone" hidden></ul>
+    </div>
+  </section>
+
+  <section id="viewBuy" hidden>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <form class="add" id="addBuy">
+        <input id="inBuy" placeholder="Wat wil je later kopen?" autocomplete="off" enterkeyhint="next">
+        <input id="inBuyPrice" class="small" placeholder="€ prijs" inputmode="decimal" autocomplete="off" enterkeyhint="done" aria-label="Geschatte prijs in euro (optioneel)">
+        <button type="submit">Voeg toe</button>
+      </form>
+      <div class="total" id="buyTotal" hidden><small id="buyTotalLbl"></small><b id="buyTotalVal"></b></div>
+      <ul class="list" id="ulBuyOpen"></ul>
+      <div class="empty" id="emptyBuy" hidden><strong>Nog niets op je verlanglijst</strong>Grotere aankopen voor later. Markeer met ★ wat voorrang heeft, en vink af als je het gekocht hebt.</div>
+      <div class="section-label" id="lblBuyDone" hidden><span>Gekocht</span><span id="buySpent"></span></div>
+      <ul class="list" id="ulBuyDone" hidden></ul>
+    </div>
+  </section>
+
+  <section id="viewLogin">
+    <form class="login" id="loginForm">
+      <p>Log in met je Be Strong-account.</p>
+      <label class="fld" for="inEmail"><span>E-mailadres</span>
+        <input id="inEmail" name="email" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
+      <label class="fld" for="inPassword"><span>Wachtwoord</span>
+        <input id="inPassword" name="password" type="password" autocomplete="current-password" required></label>
+      <button class="btn" id="btnLogin" type="submit">Inloggen</button>
+      <p>Wachtwoord vergeten? Stel een nieuw in via <a href="https://byornn1993.github.io/Be-strong/">Be Strong</a>.</p>
+    </form>
+  </section>
+
+  <p class="msg" id="msg"></p>
+  <button class="toggle" id="btnLogout" type="button">Uitloggen</button>
+</div>
+
+<script>
+let col = null, chCol = null, buyCol = null;
+let items = [], challenges = [], buys = [], view = "list", busy = false, pending = null;
+const $ = id => document.getElementById(id);
+const eur = new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" });
+
+function say(t) { $("msg").textContent = t; if (t) setTimeout(() => { if ($("msg").textContent === t) $("msg").textContent = ""; }, 3500); }
+function errText(e) {
+  if (e && e.code === "23505") return "Deze naam bestaat al.";
+  if (e && (e.status === 401 || e.code === "PGRST301" || e.code === "PGRST303")) return "Je bent uitgelogd. Log opnieuw in.";
+  return "Opslaan lukte niet. Controleer je verbinding en probeer opnieuw.";
+}
+async function w(fn) { try { await fn(); } catch (e) { say(errText(e)); } }
+
+const VIEWS = { list: ["tabList", "viewList", "Boodschappen"], std: ["tabStd", "viewStd", "Boodschappen"],
+                ch: ["tabCh", "viewCh", "Challenges"], buy: ["tabBuy", "viewBuy", "Later kopen"] };
+function setView(v) {
+  if (!VIEWS[v]) v = "list";
+  view = v;
+  for (const [k, [tab, sec]] of Object.entries(VIEWS)) { $(tab).setAttribute("aria-selected", k === v); $(sec).hidden = k !== v; }
+  $("title").textContent = VIEWS[v][2];
+  try { localStorage.setItem("lists-tab", v); } catch (e) {}
+}
+for (const [k, [tab]] of Object.entries(VIEWS)) $(tab).onclick = () => setView(k);
+try { const t = localStorage.getItem("lists-tab"); if (t) setView(t); } catch (e) {}
+
+// Thema: per toestel bewaard, standaard donker. Elke tik: automatisch → licht → donker.
+const THEMES = { auto: "automatisch", light: "licht", dark: "donker" }, NEXT = { auto: "light", light: "dark", dark: "auto" };
+let theme = "dark";
+try { const t = localStorage.getItem("lists-theme"); if (THEMES[t]) theme = t; } catch (e) {}
+function applyTheme() {
+  if (theme === "auto") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", theme);
+  $("themeLbl").textContent = "Thema: " + THEMES[theme];
+}
+$("btnTheme").onclick = () => {
+  theme = NEXT[theme]; applyTheme();
+  try { localStorage.setItem("lists-theme", theme); } catch (e) {}
+  say("Thema: " + THEMES[theme] + (theme === "auto" ? " (zoals je toestel)" : ""));
+};
+applyTheme();
+
+// Lijn-iconen in Lucide-stijl voor de knoppen in de lijsten
+const ICONS = {
+  "✕": '<path d="M18 6 6 18M6 6l12 12"/>',
+  "🗑": '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',
+  "✎": '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>'
+};
+function btn(cls, label, title, fn) {
+  const b = document.createElement("button");
+  b.className = "icon " + cls; b.title = title; b.setAttribute("aria-label", title);
+  if (ICONS[label]) b.innerHTML = `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[label]}</svg>`; else b.textContent = label;
+  b.onclick = fn; return b;
+}
+function checkbox(id, checked, label, fn) {
+  const cb = document.createElement("input"); cb.type = "checkbox"; cb.className = "check"; cb.checked = !!checked;
+  cb.id = id; cb.setAttribute("aria-label", label); cb.onchange = () => fn(cb.checked); return cb;
+}
+function nameLabel(forId, text) {
+  const l = document.createElement("label"); l.className = "name"; l.htmlFor = forId; l.textContent = text; return l;
+}
+
+function render() { renderShopping(); renderChallenges(); renderBuys(); }
+
+function renderShopping() {
+  const onList = items.filter(i => i.onList).sort((a, b) => (a.done - b.done) || a.name.localeCompare(b.name, "nl"));
+  const std = items.filter(i => i.standard).sort((a, b) => a.name.localeCompare(b.name, "nl"));
+  const open = onList.filter(i => !i.done).length;
+  $("cntList").textContent = onList.length ? `· ${open}` : "";
+  $("cntStd").textContent = std.length ? `· ${std.length}` : "";
+
+  const ul = $("ulList"); ul.replaceChildren();
+  for (const it of onList) {
+    const li = document.createElement("li"); if (it.done) li.className = "done";
+    const cb = checkbox("c-" + it.id, it.done, "Afvinken: " + it.name, v => w(() => col.doc(it.id).update({ done: v })));
+    li.append(cb, nameLabel(cb.id, it.name));
+    if (it.standard) { const t = document.createElement("span"); t.className = "tag"; t.textContent = "vast"; li.append(t); }
+    li.append(btn("", "✕", "Van lijst halen", () => w(() =>
+      it.standard ? col.doc(it.id).update({ onList: false, done: false }) : col.doc(it.id).delete())));
+    ul.append(li);
+  }
+  ul.hidden = !onList.length; $("emptyList").hidden = !!onList.length;
+
+  const us = $("ulStd"); us.replaceChildren();
+  for (const it of std) {
+    const li = document.createElement("li");
+    const name = document.createElement("span"); name.className = "name"; name.textContent = it.name;
+    const tg = document.createElement("button"); tg.className = "toggle" + (it.onList ? " on" : "");
+    tg.textContent = it.onList ? "Op lijst" : "Zet op lijst";
+    tg.onclick = () => w(() => col.doc(it.id).update({ onList: !it.onList, done: false }));
+    li.append(name, tg, btn("", "🗑", "Vast item verwijderen", () => w(() => col.doc(it.id).delete())));
+    us.append(li);
+  }
+  us.hidden = !std.length; $("emptyStd").hidden = !!std.length;
+}
+
+let editCh = null; // concept van de challenge die je nu aanpast: { id, name, goal, count }
+
+function field(id, label, value, wide) {
+  const l = document.createElement("label"); l.className = "fld" + (wide ? " wide" : ""); l.htmlFor = id;
+  const s = document.createElement("span"); s.textContent = label;
+  const i = document.createElement("input"); i.id = id; i.value = value; i.autocomplete = "off";
+  l.append(s, i); return [l, i];
+}
+
+function startEdit(c) {
+  editCh = { id: c.id, name: c.name, goal: c.goal ? String(c.goal) : "", count: String(c.count) };
+  renderChallenges(true);
+  const n = $("ed-name"); if (n) { n.focus(); n.select(); }
+}
+function stopEdit() { editCh = null; renderChallenges(true); }
+
+function chEditLi(c) {
+  const li = document.createElement("li");
+  const f = document.createElement("form"); f.className = "edit";
+  const [ln, n] = field("ed-name", "Naam", editCh.name, true);
+  const [lg, g] = field("ed-goal", "Doel (leeg = vinkje)", editCh.goal);
+  const [lc, k] = field("ed-count", "Stand", editCh.count);
+  g.inputMode = k.inputMode = "numeric";
+  n.oninput = () => editCh.name = n.value;
+  g.oninput = () => { editCh.goal = g.value; lc.hidden = !g.value.trim(); };
+  k.oninput = () => editCh.count = k.value;
+  lc.hidden = !editCh.goal.trim();
+  const save = document.createElement("button"); save.type = "submit"; save.className = "btn"; save.textContent = "Opslaan";
+  const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "btn ghost"; cancel.textContent = "Annuleer";
+  cancel.onclick = stopEdit;
+  f.onkeydown = e => { if (e.key === "Escape") stopEdit(); };
+  f.onsubmit = async e => {
+    e.preventDefault();
+    const name = editCh.name.trim();
+    if (!name) { say("Geef de challenge een naam."); return; }
+    const goal = editCh.goal.trim() ? parseInt(editCh.goal, 10) : null;
+    if (editCh.goal.trim() && !(goal > 0)) { say("Vul bij doel een heel getal in, bv. 30, of laat het leeg."); return; }
+    const count = goal ? parseInt(editCh.count || "0", 10) : 0;
+    if (goal && !(count >= 0)) { say("Vul bij stand een heel getal in, bv. 12."); return; }
+    const done = !!goal && count >= goal;
+    editCh = null;
+    await w(() => chCol.doc(c.id).update({ name, goal, count, done, doneAt: done ? Date.now() : null }));
+    say(done ? "Opgeslagen. Doel gehaald, staat nu bij Gehaald." : "Opgeslagen.");
+    renderChallenges(true);
+  };
+  f.append(ln, lg, lc, save, cancel);
+  li.append(f); return li;
+}
+
+function chLi(c) {
+  if (editCh && editCh.id === c.id && !c.done) return chEditLi(c);
+  const li = document.createElement("li"); if (c.done) li.className = "done";
+  if (c.goal) {
+    const box = document.createElement("div"); box.className = "ch";
+    const row = document.createElement("div"); row.className = "row";
+    const name = document.createElement("span"); name.className = "name"; name.textContent = c.name;
+    const num = document.createElement("span"); num.className = "num"; num.textContent = `${c.count} / ${c.goal}`;
+    row.append(name, num);
+    const bar = document.createElement("div"); bar.className = "bar";
+    const fill = document.createElement("span"); fill.style.width = Math.min(100, c.count / c.goal * 100) + "%";
+    bar.append(fill); box.append(row, bar);
+    const setCount = n => w(() => chCol.doc(c.id).update({ count: n, done: n >= c.goal, doneAt: n >= c.goal ? (c.doneAt || Date.now()) : null }));
+    const minus = document.createElement("button"); minus.className = "step"; minus.textContent = "−";
+    minus.setAttribute("aria-label", "Eén terug: " + c.name); minus.disabled = c.count <= 0;
+    minus.onclick = () => setCount(Math.max(0, c.count - 1));
+    li.append(box, minus);
+    if (!c.done) {
+      const plus = document.createElement("button"); plus.className = "step plus"; plus.textContent = "+1";
+      plus.setAttribute("aria-label", "Eén erbij: " + c.name);
+      plus.onclick = () => setCount(c.count + 1);
+      li.append(plus);
+    }
+  } else {
+    const cb = checkbox("ch-" + c.id, c.done, "Gehaald: " + c.name,
+      v => w(() => chCol.doc(c.id).update({ done: v, doneAt: v ? Date.now() : null })));
+    li.append(cb, nameLabel(cb.id, c.name));
+  }
+  if (!c.done) li.append(btn("", "✎", "Challenge aanpassen", () => startEdit(c)));
+  li.append(btn("", "🗑", "Challenge verwijderen", () => ask(`Challenge "${c.name}" verwijderen?`, () => w(() => chCol.doc(c.id).delete()))));
+  return li;
+}
+
+function renderChallenges(force) {
+  const open = challenges.filter(c => !c.done).sort((a, b) => a.created - b.created);
+  const done = challenges.filter(c => c.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
+  $("cntCh").textContent = challenges.length ? `· ${open.length}` : "";
+  if (editCh && !open.some(c => c.id === editCh.id)) editCh = null;
+  // Tijdens het aanpassen niet opnieuw tekenen bij een sync, anders verlies je de focus in het invoerveld
+  if (editCh && !force && $("ed-name")) return;
+  $("ulChOpen").replaceChildren(...open.map(chLi));
+  $("ulChDone").replaceChildren(...done.map(chLi));
+  $("ulChOpen").hidden = !open.length; $("lblChOpen").hidden = !open.length || !done.length;
+  $("emptyCh").hidden = !!challenges.length;
+  $("ulChDone").hidden = $("lblChDone").hidden = !done.length;
+}
+
+// "249,99", "€ 1.299,00" of "249.99" -> getal; leeg -> null; ongeldig -> NaN
+function parsePrice(text) {
+  let raw = text.trim().replace(/[€\s]/g, "");
+  if (!raw) return null;
+  if (raw.includes(",")) raw = raw.replace(/\./g, "").replace(",", ".");
+  const n = Number(raw); return n >= 0 ? n : NaN;
+}
+const priceText = p => p == null ? "" : p.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false });
+
+let editBuy = null; // concept van het item dat je nu aanpast: { id, name, price }
+
+function startEditBuy(b) {
+  editBuy = { id: b.id, name: b.name, price: priceText(b.price) };
+  renderBuys(true);
+  const n = $("eb-name"); if (n) { n.focus(); n.select(); }
+}
+function stopEditBuy() { editBuy = null; renderBuys(true); }
+
+function buyEditLi(b) {
+  const li = document.createElement("li");
+  const f = document.createElement("form"); f.className = "edit";
+  const [ln, n] = field("eb-name", "Naam", editBuy.name, true);
+  const [lp, p] = field("eb-price", "Prijs in € (leeg = geen)", editBuy.price);
+  p.inputMode = "decimal";
+  n.oninput = () => editBuy.name = n.value;
+  p.oninput = () => editBuy.price = p.value;
+  const save = document.createElement("button"); save.type = "submit"; save.className = "btn"; save.textContent = "Opslaan";
+  const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "btn ghost"; cancel.textContent = "Annuleer";
+  cancel.onclick = stopEditBuy;
+  f.onkeydown = e => { if (e.key === "Escape") stopEditBuy(); };
+  f.onsubmit = async e => {
+    e.preventDefault();
+    const name = editBuy.name.trim();
+    if (!name) { say("Geef het item een naam."); return; }
+    const price = parsePrice(editBuy.price);
+    if (Number.isNaN(price)) { say("Vul de prijs in als getal, bv. 249,99, of laat het leeg."); return; }
+    editBuy = null;
+    await w(() => buyCol.doc(b.id).update({ name, price }));
+    say("Opgeslagen.");
+    renderBuys(true);
+  };
+  f.append(ln, lp, save, cancel);
+  li.append(f); return li;
+}
+
+function buyLi(b) {
+  if (editBuy && editBuy.id === b.id) return buyEditLi(b);
+  const li = document.createElement("li"); if (b.bought) li.className = "done";
+  const cb = checkbox("b-" + b.id, b.bought, "Gekocht: " + b.name,
+    v => w(() => buyCol.doc(b.id).update({ bought: v, boughtAt: v ? Date.now() : null })));
+  li.append(cb, nameLabel(cb.id, b.name));
+  if (b.price != null) { const p = document.createElement("span"); p.className = "price"; p.textContent = eur.format(b.price); li.append(p); }
+  if (!b.bought) {
+    const s = btn("star" + (b.priority ? " on" : ""), b.priority ? "★" : "☆", b.priority ? "Voorrang weghalen" : "Voorrang geven",
+      () => w(() => buyCol.doc(b.id).update({ priority: !b.priority })));
+    s.setAttribute("aria-pressed", !!b.priority); li.append(s);
+  }
+  li.append(btn("", "✎", "Aanpassen", () => startEditBuy(b)));
+  li.append(btn("", "🗑", "Verwijderen", () => w(() => buyCol.doc(b.id).delete())));
+  return li;
+}
+
+function renderBuys(force) {
+  const open = buys.filter(b => !b.bought).sort((a, b) => (b.priority - a.priority) || a.created - b.created);
+  const done = buys.filter(b => b.bought).sort((a, b) => (b.boughtAt || 0) - (a.boughtAt || 0));
+  const sum = list => list.reduce((s, b) => s + (b.price || 0), 0);
+  $("cntBuy").textContent = buys.length ? `· ${open.length}` : "";
+  if (editBuy && !buys.some(b => b.id === editBuy.id)) editBuy = null;
+  // Tijdens het aanpassen niet opnieuw tekenen bij een sync, anders verlies je de focus in het invoerveld
+  if (editBuy && !force && $("eb-name")) return;
+  $("ulBuyOpen").replaceChildren(...open.map(buyLi));
+  $("ulBuyDone").replaceChildren(...done.map(buyLi));
+  $("ulBuyOpen").hidden = !open.length; $("emptyBuy").hidden = !!buys.length;
+  $("ulBuyDone").hidden = $("lblBuyDone").hidden = !done.length;
+  $("buySpent").textContent = done.some(b => b.price != null) ? eur.format(sum(done)) : "";
+  const priced = open.filter(b => b.price != null);
+  $("buyTotal").hidden = !priced.length;
+  const prio = sum(open.filter(b => b.priority));
+  $("buyTotalLbl").textContent = `Nog te kopen${prio ? ` · waarvan ★ ${eur.format(prio)}` : ""}${priced.length < open.length ? " · niet alles heeft een prijs" : ""}`;
+  $("buyTotalVal").textContent = eur.format(sum(open));
+}
+
+function exists(name) { return items.find(i => i.name.toLowerCase() === name.toLowerCase()); }
+
+$("addList").onsubmit = async e => {
+  e.preventDefault(); if (!col) return;
+  const name = $("inList").value.trim(); if (!name) return;
+  $("inList").value = "";
+  const ex = exists(name);
+  await w(() => ex ? col.doc(ex.id).update({ onList: true, done: false })
+                   : col.add({ name, standard: false, onList: true, done: false, created: Date.now() }));
+};
+$("addStd").onsubmit = async e => {
+  e.preventDefault(); if (!col) return;
+  const name = $("inStd").value.trim(); if (!name) return;
+  $("inStd").value = "";
+  const ex = exists(name);
+  await w(() => ex ? col.doc(ex.id).update({ standard: true })
+                   : col.add({ name, standard: true, onList: false, done: false, created: Date.now() }));
+};
+$("addCh").onsubmit = async e => {
+  e.preventDefault(); if (!chCol) return;
+  const name = $("inCh").value.trim(); if (!name) return;
+  const raw = $("inChGoal").value.trim(), goal = raw ? parseInt(raw, 10) : null;
+  if (raw && !(goal > 0)) { say("Vul bij doel een heel getal in, bv. 30, of laat het leeg."); return; }
+  $("inCh").value = ""; $("inChGoal").value = "";
+  await w(() => chCol.add({ name, goal, count: 0, done: false, doneAt: null, created: Date.now() }));
+};
+$("addBuy").onsubmit = async e => {
+  e.preventDefault(); if (!buyCol) return;
+  const name = $("inBuy").value.trim(); if (!name) return;
+  const price = parsePrice($("inBuyPrice").value);
+  if (Number.isNaN(price)) { say("Vul de prijs in als getal, bv. 249,99, of laat het leeg."); return; }
+  $("inBuy").value = ""; $("inBuyPrice").value = "";
+  await w(() => buyCol.add({ name, price, priority: false, bought: false, boughtAt: null, created: Date.now() }));
+};
+
+function ask(text, fn) {
+  $("confirmText").textContent = text; pending = fn;
+  const box = $("confirmBox"); $("msg").before(box); box.hidden = false;
+}
+$("confirmNo").onclick = () => { $("confirmBox").hidden = true; pending = null; };
+$("confirmYes").onclick = async () => { $("confirmBox").hidden = true; const f = pending; pending = null; if (f) await f(); };
+
+async function bulk(list, fn, doneMsg) {
+  if (busy) return; busy = true;
+  try { for (const it of list) await fn(it); say(doneMsg); } catch (e) { say(errText(e)); } finally { busy = false; }
+}
+$("btnFill").onclick = () => {
+  if (!col) return;
+  const todo = items.filter(i => i.standard && (!i.onList || i.done));
+  if (!todo.length) { say(items.some(i => i.standard) ? "Alle vaste items staan al op je lijst." : "Je hebt nog geen vaste items. Voeg ze toe bij 'Vast'."); return; }
+  bulk(todo, it => col.doc(it.id).update({ onList: true, done: false }), `${todo.length} vaste item(s) op je lijst gezet.`);
+};
+$("btnClear").onclick = () => {
+  if (!col) return;
+  const done = items.filter(i => i.onList && i.done);
+  if (!done.length) { say("Er is nog niets afgevinkt."); return; }
+  ask(`${done.length} afgevinkt item(s) van de lijst halen? Vaste items blijven bewaard.`, () =>
+    bulk(done, it => it.standard ? col.doc(it.id).update({ onList: false, done: false }) : col.doc(it.id).delete(), "Opgeruimd."));
+};
+
+// ── Supabase: gedeeld project met Be Strong, zie SUPABASE_SHARED.md
+// De publishable key mag in de frontend staan. NOOIT een secret of service role key gebruiken.
+const SUPABASE_URL = "https://mngqptjikxeihmmnibio.supabase.co";
+const SUPABASE_KEY = "sb_publishable_QgOb3zm1ysay0aBXgTfoQg_cOnqpTX7";
+const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: "lists-auth" },
+}) : null;
+
+// De app werkt met onList/doneAt/... en tijden in milliseconden, de database met on_list/done_at/... en timestamps.
+const COLUMNS = { onList: "on_list", doneAt: "done_at", boughtAt: "bought_at", created: "created_at" };
+const FIELDS = Object.fromEntries(Object.entries(COLUMNS).map(([field, column]) => [column, field]));
+const TIMES = new Set(["doneAt", "boughtAt", "created"]);
+
+function toRow(data) {
+  const row = {};
+  for (const [k, v] of Object.entries(data)) row[COLUMNS[k] || k] = TIMES.has(k) && v != null ? new Date(v).toISOString() : v;
+  return row;
+}
+function fromRow(row) {
+  const data = {};
+  for (const [k, v] of Object.entries(row)) {
+    if (k === "user_id" || k === "updated_at") continue;
+    const field = FIELDS[k] || k;
+    data[field] = TIMES.has(field) && v != null ? Date.parse(v) : k === "price" && v != null ? Number(v) : v;
+  }
+  return data;
+}
+
+// Eén tabel. Een wijziging is meteen zichtbaar, daarna gaat ze naar de database en wordt de tabel opnieuw opgehaald.
+// Zolang er nog iets verstuurd wordt, wordt ophalen uitgesteld, zodat een snelle tik niet wordt teruggedraaid.
+function collection(table, apply) {
+  let rows = [], writing = 0, timer = null, loadId = 0;
+  const show = () => { apply(rows.filter(r => typeof r.name === "string")); render(); };
+  const load = async () => {
+    if (writing) return;
+    const id = ++loadId;
+    const { data, error } = await sb.from(table).select("*");
+    if (id !== loadId || writing) return;
+    if (error) { reachable = false; showStatus(); return; }
+    reachable = true; showStatus();
+    rows = data.map(fromRow); show();
+  };
+  const refresh = () => { clearTimeout(timer); timer = setTimeout(load, 200); };
+  const write = async (change, send) => {
+    rows = change(rows); show(); writing++;
+    try { const { error } = await send(); if (error) throw error; }
+    finally { writing--; refresh(); }
+  };
+  return {
+    table, refresh, load,
+    clear() { loadId++; clearTimeout(timer); rows = []; show(); },
+    add(data) {
+      const id = crypto.randomUUID();
+      return write(r => [...r, { id, ...data }], () => sb.from(table).insert({ id, ...toRow(data) }));
+    },
+    doc: id => ({
+      update: patch => write(r => r.map(x => x.id === id ? { ...x, ...patch } : x), () => sb.from(table).update(toRow(patch)).eq("id", id)),
+      delete: () => write(r => r.filter(x => x.id !== id), () => sb.from(table).delete().eq("id", id)),
+    }),
+  };
+}
+
+col = collection("lists_items", r => {
+  items = r.map(i => ({ ...i, done: !!i.done, onList: !!i.onList, standard: !!i.standard }));
+});
+chCol = collection("lists_challenges", r => {
+  challenges = r.map(c => {
+    const goal = Number.isInteger(c.goal) && c.goal > 0 ? c.goal : null;
+    return { ...c, goal, count: Math.max(0, Number(c.count) || 0), done: !!c.done, created: c.created || 0 };
+  });
+});
+buyCol = collection("lists_wishlist", r => {
+  buys = r.map(b => ({ ...b, price: typeof b.price === "number" && isFinite(b.price) ? b.price : null,
+    priority: !!b.priority, bought: !!b.bought, created: b.created || 0 }));
+});
+const tables = [col, chCol, buyCol];
+const loadAll = () => tables.forEach(t => t.load());
+
+// Status rechtsboven: groen als de database bereikbaar is én de live verbinding open staat.
+let userId = null, channel = null, channelNr = 0, live = false, reachable = true, hiddenAt = 0;
+function showStatus() {
+  const ok = live && reachable;
+  $("dot").className = ok ? "dot on" : "dot";
+  $("syncText").textContent = ok ? "Gesynchroniseerd" : !reachable || !navigator.onLine ? "Verbinding verbroken" : "Verbinden…";
+}
+
+function disconnect() {
+  if (channel) { const old = channel; channel = null; sb.removeChannel(old); }
+  live = false;
+}
+function connect() {
+  disconnect(); showStatus();
+  const ch = sb.channel(`lists-${userId}-${++channelNr}`);
+  for (const t of tables) ch.on("postgres_changes", { event: "*", schema: "public", table: t.table }, () => t.refresh());
+  channel = ch;
+  ch.subscribe(state => {
+    if (ch !== channel) return;
+    live = state === "SUBSCRIBED";
+    if (live) loadAll(); else if (state !== "CLOSED") reachable = navigator.onLine;
+    showStatus();
+  });
+}
+
+// Een iPhone sluit de verbinding als de app op de achtergrond staat: bij terugkomen opnieuw verbinden en alles ophalen.
+function resume() {
+  if (!userId) return;
+  if (!live || Date.now() - hiddenAt > 30000 && hiddenAt) connect(); else loadAll();
+  hiddenAt = 0;
+}
+document.addEventListener("visibilitychange", () => { if (document.hidden) hiddenAt = Date.now(); else resume(); });
+window.addEventListener("pageshow", e => { if (e.persisted) resume(); });
+window.addEventListener("online", () => { reachable = true; resume(); });
+window.addEventListener("offline", () => { live = false; reachable = false; showStatus(); });
+
+function onSession(session) {
+  const id = session?.user?.id ?? null;
+  document.body.classList.remove("boot");
+  document.body.classList.toggle("out", !id);
+  if (id === userId) { if (id) loadAll(); return; }
+  userId = id;
+  if (id) { reachable = true; connect(); }
+  else { disconnect(); tables.forEach(t => t.clear()); }
+}
+
+function loginError(e) {
+  if (e.code === "invalid_credentials" || e.status === 400) return "E-mailadres of wachtwoord klopt niet.";
+  if (e.status === 429) return "Te veel pogingen. Wacht even en probeer opnieuw.";
+  return "Inloggen lukte niet. Controleer je verbinding en probeer opnieuw.";
+}
+$("loginForm").onsubmit = async e => {
+  e.preventDefault();
+  if (!sb) return;
+  $("btnLogin").disabled = true;
+  try {
+    const { error } = await sb.auth.signInWithPassword({ email: $("inEmail").value.trim(), password: $("inPassword").value });
+    if (error) say(loginError(error)); else $("inPassword").value = "";
+  } catch (err) { say(loginError(err)); }
+  $("btnLogin").disabled = false;
+};
+// Alleen op dit toestel en in deze app uitloggen, Be Strong blijft ingelogd.
+$("btnLogout").onclick = () => w(async () => { const { error } = await sb.auth.signOut({ scope: "local" }); if (error) throw error; });
+
+if (sb) sb.auth.onAuthStateChange((_event, session) => { setTimeout(() => onSession(session)); });
+else { document.body.classList.remove("boot"); document.body.classList.add("out"); $("btnLogin").disabled = true;
+  $("msg").textContent = "De app kon niet laden. Controleer je verbinding en herlaad de pagina."; }
+render();
+</script>
+
+</body></html>

@@ -1,0 +1,6 @@
+.env
+.env.*
+.DS_Store
+
+# Persoonlijke data voor de eenmalige import: NOOIT committen
+/import/
