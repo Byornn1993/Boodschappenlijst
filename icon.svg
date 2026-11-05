@@ -1,16 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <!-- Boodschappenlijst app-icoon: Deep Black vlak, gouden lijst met vinkjes. Eigen ontwerp. -->
-  <rect width="512" height="512" rx="112" fill="#101418"/>
-  <g id="art" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <g stroke="#B08D57" stroke-width="30">
-      <path d="M96 150l30 30 54-60"/>
-      <path d="M96 268l30 30 54-60"/>
-    </g>
-    <rect x="96" y="352" width="84" height="56" rx="16" stroke="#DCC9A6" stroke-width="22" opacity=".55"/>
-    <g stroke="#B08D57" stroke-width="32">
-      <path d="M240 152h176"/>
-      <path d="M240 270h176"/>
-    </g>
-    <path d="M240 380h176" stroke="#DCC9A6" stroke-width="32" opacity=".55"/>
+  <!-- Boodschappenlijst app-icoon: antraciet vlak, gouden vinkje met lange schaduw. Bjorn huisstijl. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2C3E50"/>
+      <stop offset="1" stop-color="#101418"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="124" y1="146" x2="388" y2="366" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#DCC9A6"/>
+      <stop offset="1" stop-color="#B08D57"/>
+    </linearGradient>
+    <linearGradient id="shadow" x1="300" y1="278" x2="500" y2="478" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#101418" stop-opacity=".6"/>
+      <stop offset="1" stop-color="#101418" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="tile"><rect width="512" height="512" rx="112"/></clipPath>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="512" height="512" fill="url(#bg)"/>
+    <path d="M212 366 388 190 788 590 612 766Z" fill="url(#shadow)"/>
+    <path d="M124 277 168 234 212 278 344 146 388 190 212 366Z" fill="url(#gold)"/>
   </g>
 </svg>
