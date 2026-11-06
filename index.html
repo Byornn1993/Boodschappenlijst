@@ -18,8 +18,10 @@
 <style>
 /* Bjorn huisstijl: één smalle kolom als notitieblok, tabs bovenaan. Donker is standaard. */
 :root {
-  --bg:#101418; --surface:#2C3E50; --surface-2:#243445; --input:#22313F;
-  --line:rgba(220,201,166,.17); --line-2:rgba(220,201,166,.09);
+  --bg:#101418; --bg-glow:radial-gradient(ellipse 80% 55% at 50% 0%,rgba(44,62,80,.85),transparent 70%),radial-gradient(ellipse 60% 40% at 100% 100%,rgba(176,141,87,.16),transparent 70%);
+  --card:rgba(44,62,80,.55); --card-line:rgba(220,201,166,.12); --field:rgba(44,62,80,.55);
+  --surface:#2C3E50; --surface-2:#243445; --input:#22313F;
+  --line:rgba(220,201,166,.17); --line-2:rgba(220,201,166,.08);
   --fg:#FBF6EE; --muted:#CBB994; --champ:#DCC9A6;
   --accent:#B08D57; --accent-fg:#101418; --accent-soft:rgba(176,141,87,.18);
   --pos:#8DBF98; --neg:#E0907E; --warn:#D9AE63;
@@ -30,22 +32,30 @@
   color-scheme:dark;
 }
 @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
-  --bg:#F6F1E8; --surface:#FFFDF9; --surface-2:#F3ECE0; --input:#FFFFFF;
-  --line:#E4D9C6; --line-2:#EEE6D8;
+  --bg:#FBF6EE; --bg-glow:radial-gradient(ellipse 80% 55% at 50% 0%,rgba(220,201,166,.55),transparent 70%),radial-gradient(ellipse 60% 40% at 100% 100%,rgba(44,62,80,.1),transparent 70%);
+  --card:rgba(255,255,255,.75); --card-line:rgba(176,141,87,.25); --field:rgba(255,255,255,.75);
+  --surface:#FFFDF9; --surface-2:#F3ECE0; --input:#FFFFFF;
+  --line:#E4D9C6; --line-2:rgba(44,62,80,.08);
   --fg:#101418; --muted:#6E6253; --champ:#B08D57;
   --accent:#8E6E3E; --accent-fg:#FBF6EE; --accent-soft:#F1E7D4;
-  --pos:#4E7F5A; --neg:#A9503E; --warn:#A57524;
+  --pos:#4E7F5A; --neg:#A9503E; --warn:#8A6118;
   --shadow:0 1px 2px rgba(16,20,24,.05),0 4px 14px rgba(16,20,24,.04); color-scheme:light } }
 :root[data-theme="light"] {
-  --bg:#F6F1E8; --surface:#FFFDF9; --surface-2:#F3ECE0; --input:#FFFFFF;
-  --line:#E4D9C6; --line-2:#EEE6D8;
+  --bg:#FBF6EE; --bg-glow:radial-gradient(ellipse 80% 55% at 50% 0%,rgba(220,201,166,.55),transparent 70%),radial-gradient(ellipse 60% 40% at 100% 100%,rgba(44,62,80,.1),transparent 70%);
+  --card:rgba(255,255,255,.75); --card-line:rgba(176,141,87,.25); --field:rgba(255,255,255,.75);
+  --surface:#FFFDF9; --surface-2:#F3ECE0; --input:#FFFFFF;
+  --line:#E4D9C6; --line-2:rgba(44,62,80,.08);
   --fg:#101418; --muted:#6E6253; --champ:#B08D57;
   --accent:#8E6E3E; --accent-fg:#FBF6EE; --accent-soft:#F1E7D4;
-  --pos:#4E7F5A; --neg:#A9503E; --warn:#A57524;
+  --pos:#4E7F5A; --neg:#A9503E; --warn:#8A6118;
   --shadow:0 1px 2px rgba(16,20,24,.05),0 4px 14px rgba(16,20,24,.04); color-scheme:light }
 
 html, body { height: 100%; }
-body { background: var(--bg); color: var(--fg); font: 15px/1.45 var(--font-body);
+html { background: var(--bg); }
+/* Achtergrondgloed op een vaste laag: iOS negeert background-attachment: fixed. */
+body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; z-index: -1; height: 100vh; height: 100lvh; pointer-events: none;
+  background-color: var(--bg); background-image: var(--bg-glow); }
+body { background: transparent; color: var(--fg); font: 15px/1.45 var(--font-body);
   -webkit-font-smoothing: antialiased; font-feature-settings: "cv11","ss01"; }
 a { color: var(--accent); }
 .wrap { max-width: 540px; margin: 0 auto; padding-block: 22px 36px;
@@ -64,7 +74,7 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .theme svg.i { width: 16px; height: 16px; color: var(--accent); }
 .theme:hover { border-color: var(--accent); }
 
-.tabs { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--surface); border: 1px solid var(--line-2);
+.tabs { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--card); border: 1px solid var(--card-line);
   border-radius: var(--r); padding: 4px; gap: 4px; }
 .tabs button { font: 600 .88rem var(--font-body); border: 0; border-radius: var(--r-sm); padding: 10px 6px; background: transparent;
   color: var(--muted); cursor: pointer; }
@@ -75,7 +85,7 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 
 form.add { display: flex; gap: 8px; flex-wrap: wrap; }
 form.add input { flex: 1 1 160px; min-width: 0; height: 46px; box-sizing: border-box; font: 16px var(--font-body); padding: 0 14px;
-  border-radius: 12px; border: 1px solid var(--line); background: var(--input); color: var(--fg); }
+  border-radius: 12px; border: 1px solid var(--card-line); background: var(--field); color: var(--fg); }
 form.add input::placeholder, .fld input::placeholder { color: var(--muted); opacity: .75; }
 form.add input.small { flex: 0 1 120px; }
 input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -87,7 +97,7 @@ form.add button:hover, .btn:hover { background: color-mix(in srgb, var(--accent)
 .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .actions .btn { flex: 1 1 auto; min-height: 42px; padding: 0 12px; font-size: .88rem; }
 
-.list { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r); overflow: hidden; }
+.list { list-style: none; margin: 0; padding: 0; background: var(--card); border: 1px solid var(--card-line); border-radius: var(--r); overflow: hidden; }
 .list li { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--line-2); }
 .list li:first-child { border-top: 0; }
 .check { appearance: none; width: 24px; height: 24px; flex: none; border: 2px solid var(--line); border-radius: 7px; cursor: pointer;
@@ -106,14 +116,14 @@ li.done .name { color: var(--muted); text-decoration: line-through; text-decorat
 .section-label { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; margin: 4px 2px -8px;
   display: flex; justify-content: space-between; gap: 8px; }
 .section-label span:last-child:not(:first-child) { font-variant-numeric: tabular-nums; color: var(--fg); }
-.empty { text-align: center; color: var(--muted); padding: 28px 18px; background: var(--surface); border: 1px dashed var(--line); border-radius: var(--r); }
+.empty { text-align: center; color: var(--muted); padding: 28px 18px; background: var(--card); border: 1px dashed var(--card-line); border-radius: var(--r); }
 .empty strong { display: block; color: var(--fg); font: 600 15.5px var(--font-display); letter-spacing: -.01em; margin-bottom: 4px; }
 .toggle { font: 600 .82rem var(--font-body); border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 999px;
   padding: 6px 12px; cursor: pointer; white-space: nowrap; }
 .toggle:hover { border-color: var(--accent); color: var(--fg); }
 .toggle.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 .msg { font-size: .85rem; color: var(--champ); min-height: 1.2em; text-align: center; }
-.confirm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line);
+.confirm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--card); border: 1px solid var(--card-line);
   border-radius: var(--r); padding: 14px 16px; }
 .confirm span { flex: 1 1 200px; font-size: .92rem; }
 .confirm .btn { min-height: 40px; }
@@ -143,7 +153,7 @@ form.edit .btn { min-height: 44px; padding: 0 14px; font-size: .88rem; }
 .price { font-variant-numeric: tabular-nums; color: var(--champ); font-size: .92rem; white-space: nowrap; }
 li.done .price { color: var(--muted); }
 .total { display: flex; flex-direction: column; gap: 4px; border-radius: var(--r); padding: 16px 18px;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 14%, var(--surface)), var(--surface));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 14%, var(--card)), var(--card));
   border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent); box-shadow: inset 0 2px 0 var(--accent); }
 .total b { order: 2; font: 700 1.75rem/1.1 var(--font-display); letter-spacing: -.025em; font-variant-numeric: tabular-nums; color: var(--accent); }
 .total small { order: 1; color: var(--accent); font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; font-weight: 600; }
@@ -152,7 +162,7 @@ li.done .price { color: var(--muted); }
 }
 
 /* Login: tijdens het opstarten (boot) of uitgelogd (out) is de app verborgen */
-.login { display: flex; flex-direction: column; gap: 14px; background: var(--surface); border: 1px solid var(--line-2);
+.login { display: flex; flex-direction: column; gap: 14px; background: var(--card); border: 1px solid var(--card-line);
   border-radius: var(--r); padding: 18px 16px; }
 .login p { margin: 0; color: var(--muted); font-size: .9rem; }
 .login .fld { flex: none; }
@@ -294,6 +304,8 @@ function applyTheme() {
   if (theme === "auto") document.documentElement.removeAttribute("data-theme");
   else document.documentElement.setAttribute("data-theme", theme);
   $("themeLbl").textContent = "Thema: " + THEMES[theme];
+  const light = theme === "light" || (theme === "auto" && matchMedia("(prefers-color-scheme: light)").matches);
+  document.querySelector('meta[name="theme-color"]').content = light ? "#FBF6EE" : "#101418";
 }
 $("btnTheme").onclick = () => {
   theme = NEXT[theme]; applyTheme();
