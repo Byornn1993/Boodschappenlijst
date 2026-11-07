@@ -6,4 +6,4 @@ Noteer hier de datum nadat een bestand is uitgevoerd in de SQL Editor van het Su
 |---|---|---|
 | `001_basis.sql` | 2026-11-05 | Claude, via Chrome |
 | `002_rechten_aanscherpen.sql` | 2026-11-05 | Claude, via Chrome |
-| `003_volgorde.sql` | nog niet | |
+| `003_volgorde.sql` | 2026-11-07 | Claude, via Chrome |
