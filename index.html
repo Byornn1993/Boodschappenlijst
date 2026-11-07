@@ -554,11 +554,13 @@ function renderChallenges(force) {
   $("ulChDone").hidden = $("lblChDone").hidden = !done.length;
 }
 
-// "249,99", "€ 1.299,00" of "249.99" -> getal; leeg -> null; ongeldig -> NaN
+// "249,99", "€ 1.299,00", "2.200" of "249.99" -> getal; leeg -> null; ongeldig -> NaN
+// Een punt gevolgd door precies drie cijfers is een duizendtal (Nederlands), anders een decimaalteken.
 function parsePrice(text) {
   let raw = text.trim().replace(/[€\s]/g, "");
   if (!raw) return null;
   if (raw.includes(",")) raw = raw.replace(/\./g, "").replace(",", ".");
+  else if (/^\d{1,3}(\.\d{3})+$/.test(raw)) raw = raw.replace(/\./g, "");
   const n = Number(raw); return n >= 0 ? n : NaN;
 }
 const priceText = p => p == null ? "" : p.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false });
