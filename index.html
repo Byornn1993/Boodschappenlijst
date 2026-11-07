@@ -111,6 +111,13 @@ li.done .name { color: var(--muted); text-decoration: line-through; text-decorat
   display: inline-grid; place-items: center; }
 .icon:hover { color: var(--fg); background: color-mix(in srgb, var(--champ) 9%, transparent); }
 .icon.star.on { color: var(--accent); }
+/* Verslepen: greepje rechts op elke regel */
+.icon.grip { cursor: grab; touch-action: none; -webkit-touch-callout: none; color: color-mix(in srgb, var(--muted) 80%, transparent); margin-right: -6px; }
+.icon.grip svg.i { fill: currentColor; stroke: none; }
+.list.sorting li { transition: transform .15s ease; }
+.list li.dragging { position: relative; z-index: 2; transition: none; background: var(--surface); box-shadow: 0 10px 28px rgba(0,0,0,.35); }
+body.drag-active, body.drag-active * { cursor: grabbing !important; user-select: none; -webkit-user-select: none; }
+@media (max-width: 420px) { .list li { gap: 8px; padding-inline: 12px; } .list .icon { padding: 5px; } }
 .tag { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--accent); font-weight: 600;
   background: var(--accent-soft); border-radius: 999px; padding: 2px 8px; }
 .section-label { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; margin: 4px 2px -8px;
@@ -318,7 +325,8 @@ applyTheme();
 const ICONS = {
   "✕": '<path d="M18 6 6 18M6 6l12 12"/>',
   "🗑": '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',
-  "✎": '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>'
+  "✎": '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+  "grip": '<circle cx="9" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="15" cy="19" r="1.6"/>'
 };
 function btn(cls, label, title, fn) {
   const b = document.createElement("button");
@@ -334,11 +342,87 @@ function nameLabel(forId, text) {
   const l = document.createElement("label"); l.className = "name"; l.htmlFor = forId; l.textContent = text; return l;
 }
 
-function render() { renderShopping(); renderChallenges(); renderBuys(); }
+// ── Eigen volgorde. Elke lijst bewaart een getal per regel; verslepen geeft de regel een getal tussen zijn nieuwe buren.
+const ord = (a, b, key) => { const x = a[key] ?? Infinity, y = b[key] ?? Infinity; return x === y ? 0 : x < y ? -1 : 1; };
+const nextOrder = (list, key) => Math.max(0, ...list.map(x => x[key] ?? 0)) + 1;
+
+function reorder(group, from, to, key, store) {
+  if (from === to || from < 0 || to < 0 || to >= group.length) return;
+  const list = group.slice(); const [moved] = list.splice(from, 1); list.splice(to, 0, moved);
+  const prev = list[to - 1]?.[key], next = list[to + 1]?.[key];
+  const value = to === 0 ? next - 1 : to === list.length - 1 ? prev + 1 : (prev + next) / 2;
+  if (list.every(x => x === moved || Number.isFinite(x[key])) && Number.isFinite(value) && value !== prev && value !== next)
+    return w(() => store.doc(moved.id).update({ [key]: value }));
+  // Ontbrekende of te dicht bij elkaar liggende getallen: de hele lijst opnieuw nummeren.
+  return w(() => Promise.all(list.map((x, i) => x[key] === i + 1 ? null : store.doc(x.id).update({ [key]: i + 1 }))));
+}
+
+// Greepje rechts: vasthouden en slepen met vinger of muis, of met de pijltjestoetsen omhoog en omlaag.
+let dragging = false, renderLater = false;
+function grip(li, group, item, key, store) {
+  const g = btn("grip", "grip", "Verplaatsen: " + item.name, null);
+  g.type = "button"; g.dataset.grip = item.id;
+  g.onkeydown = e => {
+    const from = group.indexOf(item), to = from + (e.key === "ArrowUp" ? -1 : e.key === "ArrowDown" ? 1 : 0);
+    if (to === from || to < 0 || to >= group.length) return;
+    e.preventDefault(); reorder(group, from, to, key, store);
+    document.querySelector(`[data-grip="${item.id}"]`)?.focus();
+  };
+  g.onpointerdown = e => dragStart(e, li, to => reorder(group, group.indexOf(item), to, key, store));
+  return g;
+}
+
+function dragStart(e, li, drop) {
+  if (e.button > 0 || dragging) return;
+  const ul = li.parentElement;
+  const sibs = [...ul.children].filter(x => x.dataset.group === li.dataset.group);
+  const idx = sibs.indexOf(li);
+  if (sibs.length < 2 || idx < 0) return;
+  e.preventDefault();
+  const rects = sibs.map(s => s.getBoundingClientRect()), h = rects[idx].height;
+  const y0 = e.clientY, sy0 = scrollY;
+  const minDy = rects[0].top - rects[idx].top, maxDy = rects[rects.length - 1].bottom - rects[idx].bottom;
+  let to = idx;
+  dragging = true; ul.classList.add("sorting"); li.classList.add("dragging"); document.body.classList.add("drag-active");
+  const move = ev => {
+    if (ev.pointerId !== e.pointerId) return;
+    ev.preventDefault();
+    // De regel blijft binnen de lijst, maar de vinger bepaalt waar hij landt.
+    const raw = ev.clientY - y0 + scrollY - sy0, dy = Math.min(maxDy, Math.max(minDy, raw));
+    li.style.transform = `translateY(${dy}px)`;
+    const mid = rects[idx].top + h / 2 + raw;
+    to = sibs.reduce((n, s, i) => n + (i !== idx && rects[i].top + rects[i].height / 2 < mid ? 1 : 0), 0);
+    sibs.forEach((s, i) => {
+      if (i === idx) return;
+      const shift = idx < to && i > idx && i <= to ? -h : to < idx && i >= to && i < idx ? h : 0;
+      s.style.transform = shift ? `translateY(${shift}px)` : "";
+    });
+    if (ev.clientY < 70) scrollBy(0, -10); else if (ev.clientY > innerHeight - 70) scrollBy(0, 10);
+  };
+  const end = ev => {
+    if (ev.pointerId !== e.pointerId) return;
+    removeEventListener("pointermove", move); removeEventListener("pointerup", end); removeEventListener("pointercancel", end);
+    sibs.forEach(s => s.style.transform = "");
+    ul.classList.remove("sorting"); li.classList.remove("dragging"); document.body.classList.remove("drag-active");
+    dragging = false;
+    if (ev.type === "pointerup" && to !== idx) drop(to);
+    if (renderLater) { renderLater = false; render(); }
+  };
+  addEventListener("pointermove", move, { passive: false }); addEventListener("pointerup", end); addEventListener("pointercancel", end);
+}
+
+// Tijdens het slepen niet opnieuw tekenen (bv. door een sync), anders verdwijnt de regel onder je vinger.
+function render() {
+  if (dragging) { renderLater = true; return; }
+  const focused = document.activeElement?.dataset?.grip;
+  renderShopping(); renderChallenges(); renderBuys();
+  if (focused) document.querySelector(`[data-grip="${focused}"]`)?.focus();
+}
 
 function renderShopping() {
-  const onList = items.filter(i => i.onList).sort((a, b) => (a.done - b.done) || a.name.localeCompare(b.name, "nl"));
-  const std = items.filter(i => i.standard).sort((a, b) => a.name.localeCompare(b.name, "nl"));
+  const onList = items.filter(i => i.onList).sort((a, b) => (a.done - b.done) || ord(a, b, "listOrder") || a.name.localeCompare(b.name, "nl"));
+  const std = items.filter(i => i.standard).sort((a, b) => ord(a, b, "stdOrder") || a.name.localeCompare(b.name, "nl"));
+  const openGroup = onList.filter(i => !i.done), doneGroup = onList.filter(i => i.done);
   const open = onList.filter(i => !i.done).length;
   $("cntList").textContent = onList.length ? `· ${open}` : "";
   $("cntStd").textContent = std.length ? `· ${std.length}` : "";
@@ -351,6 +435,8 @@ function renderShopping() {
     if (it.standard) { const t = document.createElement("span"); t.className = "tag"; t.textContent = "vast"; li.append(t); }
     li.append(btn("", "✕", "Van lijst halen", () => w(() =>
       it.standard ? col.doc(it.id).update({ onList: false, done: false }) : col.doc(it.id).delete())));
+    li.dataset.group = it.done ? "done" : "open";
+    li.append(grip(li, it.done ? doneGroup : openGroup, it, "listOrder", col));
     ul.append(li);
   }
   ul.hidden = !onList.length; $("emptyList").hidden = !!onList.length;
@@ -361,8 +447,11 @@ function renderShopping() {
     const name = document.createElement("span"); name.className = "name"; name.textContent = it.name;
     const tg = document.createElement("button"); tg.className = "toggle" + (it.onList ? " on" : "");
     tg.textContent = it.onList ? "Op lijst" : "Zet op lijst";
-    tg.onclick = () => w(() => col.doc(it.id).update({ onList: !it.onList, done: false }));
+    tg.onclick = () => w(() => col.doc(it.id).update(it.onList ? { onList: false, done: false }
+      : { onList: true, done: false, listOrder: nextOrder(items.filter(i => i.onList), "listOrder") }));
     li.append(name, tg, btn("", "🗑", "Vast item verwijderen", () => w(() => col.doc(it.id).delete())));
+    li.dataset.group = "std";
+    li.append(grip(li, std, it, "stdOrder", col));
     us.append(li);
   }
   us.hidden = !std.length; $("emptyStd").hidden = !!std.length;
@@ -417,7 +506,7 @@ function chEditLi(c) {
   li.append(f); return li;
 }
 
-function chLi(c) {
+function chLi(c, group) {
   if (editCh && editCh.id === c.id && !c.done) return chEditLi(c);
   const li = document.createElement("li"); if (c.done) li.className = "done";
   if (c.goal) {
@@ -447,18 +536,19 @@ function chLi(c) {
   }
   if (!c.done) li.append(btn("", "✎", "Challenge aanpassen", () => startEdit(c)));
   li.append(btn("", "🗑", "Challenge verwijderen", () => ask(`Challenge "${c.name}" verwijderen?`, () => w(() => chCol.doc(c.id).delete()))));
+  if (!c.done) { li.dataset.group = "open"; li.append(grip(li, group, c, "sortOrder", chCol)); }
   return li;
 }
 
 function renderChallenges(force) {
-  const open = challenges.filter(c => !c.done).sort((a, b) => a.created - b.created);
+  const open = challenges.filter(c => !c.done).sort((a, b) => ord(a, b, "sortOrder") || a.created - b.created);
   const done = challenges.filter(c => c.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
   $("cntCh").textContent = challenges.length ? `· ${open.length}` : "";
   if (editCh && !open.some(c => c.id === editCh.id)) editCh = null;
   // Tijdens het aanpassen niet opnieuw tekenen bij een sync, anders verlies je de focus in het invoerveld
   if (editCh && !force && $("ed-name")) return;
-  $("ulChOpen").replaceChildren(...open.map(chLi));
-  $("ulChDone").replaceChildren(...done.map(chLi));
+  $("ulChOpen").replaceChildren(...open.map(c => chLi(c, open)));
+  $("ulChDone").replaceChildren(...done.map(c => chLi(c, done)));
   $("ulChOpen").hidden = !open.length; $("lblChOpen").hidden = !open.length || !done.length;
   $("emptyCh").hidden = !!challenges.length;
   $("ulChDone").hidden = $("lblChDone").hidden = !done.length;
@@ -509,7 +599,7 @@ function buyEditLi(b) {
   li.append(f); return li;
 }
 
-function buyLi(b) {
+function buyLi(b, group) {
   if (editBuy && editBuy.id === b.id) return buyEditLi(b);
   const li = document.createElement("li"); if (b.bought) li.className = "done";
   const cb = checkbox("b-" + b.id, b.bought, "Gekocht: " + b.name,
@@ -523,19 +613,20 @@ function buyLi(b) {
   }
   li.append(btn("", "✎", "Aanpassen", () => startEditBuy(b)));
   li.append(btn("", "🗑", "Verwijderen", () => w(() => buyCol.doc(b.id).delete())));
+  if (!b.bought) { li.dataset.group = "open"; li.append(grip(li, group, b, "sortOrder", buyCol)); }
   return li;
 }
 
 function renderBuys(force) {
-  const open = buys.filter(b => !b.bought).sort((a, b) => (b.priority - a.priority) || a.created - b.created);
+  const open = buys.filter(b => !b.bought).sort((a, b) => ord(a, b, "sortOrder") || (b.priority - a.priority) || a.created - b.created);
   const done = buys.filter(b => b.bought).sort((a, b) => (b.boughtAt || 0) - (a.boughtAt || 0));
   const sum = list => list.reduce((s, b) => s + (b.price || 0), 0);
   $("cntBuy").textContent = buys.length ? `· ${open.length}` : "";
   if (editBuy && !buys.some(b => b.id === editBuy.id)) editBuy = null;
   // Tijdens het aanpassen niet opnieuw tekenen bij een sync, anders verlies je de focus in het invoerveld
   if (editBuy && !force && $("eb-name")) return;
-  $("ulBuyOpen").replaceChildren(...open.map(buyLi));
-  $("ulBuyDone").replaceChildren(...done.map(buyLi));
+  $("ulBuyOpen").replaceChildren(...open.map(b => buyLi(b, open)));
+  $("ulBuyDone").replaceChildren(...done.map(b => buyLi(b, done)));
   $("ulBuyOpen").hidden = !open.length; $("emptyBuy").hidden = !!buys.length;
   $("ulBuyDone").hidden = $("lblBuyDone").hidden = !done.length;
   $("buySpent").textContent = done.some(b => b.price != null) ? eur.format(sum(done)) : "";
@@ -552,17 +643,17 @@ $("addList").onsubmit = async e => {
   e.preventDefault(); if (!col) return;
   const name = $("inList").value.trim(); if (!name) return;
   $("inList").value = "";
-  const ex = exists(name);
-  await w(() => ex ? col.doc(ex.id).update({ onList: true, done: false })
-                   : col.add({ name, standard: false, onList: true, done: false, created: Date.now() }));
+  const ex = exists(name), listOrder = nextOrder(items.filter(i => i.onList), "listOrder");
+  await w(() => ex ? col.doc(ex.id).update({ onList: true, done: false, ...(ex.onList ? {} : { listOrder }) })
+                   : col.add({ name, standard: false, onList: true, done: false, listOrder, created: Date.now() }));
 };
 $("addStd").onsubmit = async e => {
   e.preventDefault(); if (!col) return;
   const name = $("inStd").value.trim(); if (!name) return;
   $("inStd").value = "";
-  const ex = exists(name);
-  await w(() => ex ? col.doc(ex.id).update({ standard: true })
-                   : col.add({ name, standard: true, onList: false, done: false, created: Date.now() }));
+  const ex = exists(name), stdOrder = nextOrder(items.filter(i => i.standard), "stdOrder");
+  await w(() => ex ? col.doc(ex.id).update({ standard: true, ...(ex.standard ? {} : { stdOrder }) })
+                   : col.add({ name, standard: true, onList: false, done: false, stdOrder, created: Date.now() }));
 };
 $("addCh").onsubmit = async e => {
   e.preventDefault(); if (!chCol) return;
@@ -570,7 +661,7 @@ $("addCh").onsubmit = async e => {
   const raw = $("inChGoal").value.trim(), goal = raw ? parseInt(raw, 10) : null;
   if (raw && !(goal > 0)) { say("Vul bij doel een heel getal in, bv. 30, of laat het leeg."); return; }
   $("inCh").value = ""; $("inChGoal").value = "";
-  await w(() => chCol.add({ name, goal, count: 0, done: false, doneAt: null, created: Date.now() }));
+  await w(() => chCol.add({ name, goal, count: 0, done: false, doneAt: null, sortOrder: nextOrder(challenges, "sortOrder"), created: Date.now() }));
 };
 $("addBuy").onsubmit = async e => {
   e.preventDefault(); if (!buyCol) return;
@@ -578,7 +669,7 @@ $("addBuy").onsubmit = async e => {
   const price = parsePrice($("inBuyPrice").value);
   if (Number.isNaN(price)) { say("Vul de prijs in als getal, bv. 249,99, of laat het leeg."); return; }
   $("inBuy").value = ""; $("inBuyPrice").value = "";
-  await w(() => buyCol.add({ name, price, priority: false, bought: false, boughtAt: null, created: Date.now() }));
+  await w(() => buyCol.add({ name, price, priority: false, bought: false, boughtAt: null, sortOrder: nextOrder(buys, "sortOrder"), created: Date.now() }));
 };
 
 function ask(text, fn) {
@@ -596,7 +687,11 @@ $("btnFill").onclick = () => {
   if (!col) return;
   const todo = items.filter(i => i.standard && (!i.onList || i.done));
   if (!todo.length) { say(items.some(i => i.standard) ? "Alle vaste items staan al op je lijst." : "Je hebt nog geen vaste items. Voeg ze toe bij 'Vast'."); return; }
-  bulk(todo, it => col.doc(it.id).update({ onList: true, done: false }), `${todo.length} vaste item(s) op je lijst gezet.`);
+  // Nieuw op de lijst: onderaan, in de volgorde van Vast.
+  let next = nextOrder(items.filter(i => i.onList), "listOrder");
+  const order = new Map(todo.filter(i => !i.onList).sort((a, b) => ord(a, b, "stdOrder")).map(i => [i.id, next++]));
+  bulk(todo, it => col.doc(it.id).update({ onList: true, done: false, ...(order.has(it.id) ? { listOrder: order.get(it.id) } : {}) }),
+    `${todo.length} vaste item(s) op je lijst gezet.`);
 };
 $("btnClear").onclick = () => {
   if (!col) return;
@@ -615,7 +710,8 @@ const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE
 }) : null;
 
 // De app werkt met onList/doneAt/... en tijden in milliseconden, de database met on_list/done_at/... en timestamps.
-const COLUMNS = { onList: "on_list", doneAt: "done_at", boughtAt: "bought_at", created: "created_at" };
+const COLUMNS = { onList: "on_list", doneAt: "done_at", boughtAt: "bought_at", created: "created_at",
+  listOrder: "list_order", stdOrder: "std_order", sortOrder: "sort_order" };
 const FIELDS = Object.fromEntries(Object.entries(COLUMNS).map(([field, column]) => [column, field]));
 const TIMES = new Set(["doneAt", "boughtAt", "created"]);
 
