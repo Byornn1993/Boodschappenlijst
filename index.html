@@ -174,6 +174,20 @@ body.drag-active, body.drag-active * { cursor: grabbing !important; user-select:
   border-radius: var(--r-sm); min-height: 40px; padding: 0 12px; margin-right: -6px; cursor: pointer; white-space: nowrap; }
 .toast button:hover { border-color: var(--accent); }
 
+/* Per afdeling: kopje tussen de regels */
+.list li.aisle { min-height: 0; padding: 10px 16px 6px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; font-weight: 600;
+  color: var(--accent); background: color-mix(in srgb, var(--champ) 5%, transparent); }
+
+/* Vegen: de regel schuift opzij, eronder verschijnt groen (afvinken) of rood (weghalen) */
+.list { position: relative; }
+.list li.swipeable { touch-action: pan-y; }
+.list li.swiping { position: relative; z-index: 1; background: var(--surface); }
+.swipe-under { position: absolute; left: 0; right: 0; display: flex; align-items: center; padding: 0 20px; box-sizing: border-box;
+  font: 600 .9rem var(--font-body); color: var(--muted); background: var(--surface-2); transition: background .12s, color .12s; }
+.swipe-under.left { justify-content: flex-end; }
+.swipe-under.armed.pos { background: var(--pos); color: var(--bg); }
+.swipe-under.armed.neg { background: var(--neg); color: var(--bg); }
+
 /* Suggesties onder het invoerveld: eerder gebruikte boodschappen als knopjes */
 .sugg { display: flex; flex-wrap: wrap; gap: 8px; margin-top: -6px; }
 .sugg .chip { display: inline-flex; align-items: center; max-width: 100%; border: 1px solid var(--card-line); border-radius: 999px; background: var(--card); }
@@ -289,6 +303,7 @@ body:not(.out) #viewLogin { display: none !important; }
         <button type="submit">Voeg toe</button>
       </form>
       <div class="sugg" id="suggList" aria-label="Eerder gebruikt" hidden></div>
+      <div class="section-label done-head" id="lblListOpen" hidden><span>Op je lijst</span><button class="toggle" id="btnAisle" type="button" aria-pressed="false">Per afdeling</button></div>
       <ul class="list" id="ulList"></ul>
       <div class="empty" id="emptyList" hidden><strong>Je boodschappenlijst is leeg</strong>Typ hierboven iets, of zet je vaste items in één keer op de lijst.</div>
       <div class="section-label done-head" id="lblListDone" hidden><span id="lblListDoneText">In mandje</span><button class="toggle" id="btnClear" type="button">Opruimen</button></div>
@@ -436,6 +451,56 @@ function checkbox(id, checked, label, fn) {
 function nameLabel(forId, text) {
   const l = document.createElement("label"); l.className = "name"; l.htmlFor = forId; l.textContent = text; return l;
 }
+// ── Vegen met de vinger: naar rechts = afvinken (groen), naar links = weghalen (rood, met "Ongedaan maken").
+// Elke regel krijgt zijn acties via swipe(li, rechts, links); { text, tone: "pos" | "neg", fn }.
+let swipedUntil = 0;
+function swipe(li, right, left) { li.swipe = { right, left }; li.classList.add("swipeable"); }
+document.addEventListener("pointerdown", e => {
+  if (e.pointerType !== "touch" || dragging) return;
+  const li = e.target.closest(".list li");
+  if (!li?.swipe || e.target.closest(".grip, input:not(.check), select, form")) return;
+  const ul = li.parentElement, x0 = e.clientX, y0 = e.clientY, w = li.offsetWidth, limit = Math.min(110, w * .35);
+  let dx = 0, on = false, under = null;
+  const act = () => dx > 0 ? li.swipe.right : li.swipe.left;
+  const stop = () => { removeEventListener("pointermove", move); removeEventListener("pointerup", up); removeEventListener("pointercancel", up); };
+  const reset = () => {
+    li.classList.remove("swiping"); li.style.transform = li.style.transition = ""; under?.remove();
+    dragging = false; if (renderLater) { renderLater = false; render(); }
+  };
+  const move = ev => {
+    if (ev.pointerId !== e.pointerId) return;
+    const mx = ev.clientX - x0, my = ev.clientY - y0;
+    if (!on) {
+      if (Math.abs(my) > 10 && Math.abs(my) > Math.abs(mx)) return stop(); // omhoog/omlaag = gewoon scrollen
+      if (Math.abs(mx) < 12) return;
+      on = true; dragging = true; li.classList.add("swiping");
+      under = document.createElement("div"); under.className = "swipe-under"; under.setAttribute("aria-hidden", "true");
+      under.style.top = li.offsetTop + "px"; under.style.height = li.offsetHeight + "px"; ul.append(under);
+    }
+    dx = act() ? mx : mx / 4; // geen actie die kant op: alleen een beetje meegeven
+    const a = act();
+    li.style.transform = `translateX(${dx}px)`;
+    under.className = `swipe-under ${dx > 0 ? "right" : "left"} ${a?.tone || ""}${a && Math.abs(dx) > limit ? " armed" : ""}`;
+    under.textContent = a ? a.text : "";
+  };
+  const up = ev => {
+    if (ev.pointerId !== e.pointerId) return;
+    stop(); if (!on) return;
+    swipedUntil = Date.now() + 450;
+    const a = act(), go = ev.type === "pointerup" && a && Math.abs(dx) > limit;
+    li.style.transition = "transform .18s ease";
+    li.style.transform = go ? `translateX(${dx > 0 ? w : -w}px)` : "";
+    setTimeout(() => { reset(); if (go) a.fn(); }, 180);
+  };
+  addEventListener("pointermove", move); addEventListener("pointerup", up); addEventListener("pointercancel", up);
+});
+// Na het vegen geen losse tik meer laten doorkomen (anders vinkt het label alsnog af)
+document.addEventListener("click", e => { if (e.isTrusted && Date.now() < swipedUntil) { e.preventDefault(); e.stopPropagation(); } }, true);
+// Eén keer een tip op een touchscherm
+if (matchMedia("(pointer: coarse)").matches) try {
+  if (!localStorage.getItem("lists-swipe-tip")) { localStorage.setItem("lists-swipe-tip", "1"); setTimeout(() => say("Tip: veeg een regel naar rechts om af te vinken, naar links om weg te halen."), 1500); }
+} catch (e) {}
+
 // Tik op een lege plek van een regel = tik op het vinkje van die regel
 document.addEventListener("click", e => {
   const li = e.target.closest(".list li");
@@ -524,6 +589,33 @@ function render() {
   if (focused) document.querySelector(`[data-grip="${focused}"]`)?.focus();
 }
 
+// ── Afdelingen, in de looprichting van een gewone supermarkt. Herkenning op woorden in de naam;
+// de lijst wordt van boven naar beneden afgelopen en de eerste die past wint (bv. "pindakaas" vóór "kaas").
+const AISLES = [
+  ["Groente en fruit", /appel|peer\b|peren|banaan|banan|sinaasappel|mandarijn|citroen|limoen|druif|druiven|aardbei|framboz|bosbes|kiwi|mango|ananas|meloen|avocado|tomaat|tomaten|komkommer|paprika|\bui\b|uien|sjalot|knoflook|wortel|peen|\bsla\b|ijsberg|rucola|spinazie|andijvie|broccoli|kool|courgette|aubergine|prei|champignon|paddenstoel|aardappel|kriel|boontjes|sperzie|gember|selderij|venkel|radijs|biet|spruit|asperge|mais|maïs|pompoen|basilicum|peterselie|bieslook|koriander|munt\b|fruit|groente|salade|rozijn/],
+  ["Brood en bakkerij", /brood|bolletje|croissant|baguette|krentenbol|beschuit|wrap|tortilla|pita|toast|bagel|taart|gebak/],
+  ["Vlees en vis", /vlees|\bkip|kipfilet|gehakt|biefstuk|varken|rund|spek\b|bacon|worst|hamburger|schnitzel|filet|\bham\b|salami|kalkoen|\bvis\b|zalm|garnal|kabeljauw|shoarma|tonijn|makreel|haring/],
+  ["Zuivel, kaas en eieren", /melk|yoghurt|kwark|\bvla\b|boter|room|kaas|\bei\b|eieren|margarine|skyr|mozzarella|feta|brie\b|gouda|camembert|cheddar|parmezaan|crème fraîche|creme fraiche/],
+  ["Ontbijt en beleg", /pindakaas|hagelslag|\bjam\b|honing|choco\b|chocopasta|nutella|muesli|cornflakes|havermout|granola|cruesli|ontbijt|beleg|appelstroop|rijstwafel|cracker/],
+  ["Pasta, rijst en voorraad", /pasta|spaghetti|macaroni|penne|lasagne|rijst|noedel|\bmie\b|couscous|bloem\b|meel|suiker|zout|peper\b|olie|azijn|saus|ketchup|mayo|mosterd|soep|bouillon|blik|puree|kruiden|specerij|bakmix|moes\b/],
+  ["Snoep, koek en chips", /chips|koek|snoep|chocola|drop\b|nootjes|noten|pinda|borrel|popcorn|reep|toffee/],
+  ["Dranken", /water\b|\bspa\b|frisdrank|cola\b|sap\b|bier\b|wijn|koffie|thee\b|limonade|siroop|ranja|tonic|energy/],
+  ["Diepvries", /diepvries|ijs\b|ijsjes|pizza|friet|patat|bevroren|vissticks/],
+  ["Drogisterij", /shampoo|douche|zeep|tandpasta|tandenborstel|deo|scheer|maandverband|tampon|luier|pleister|paracetamol|ibuprofen|dagcreme|handcreme|zonnebrand|lotion|wattenstaaf|scheermes/],
+  ["Huishouden", /wc-papier|wcpapier|toiletpapier|keukenrol|afwas|vaatwas|wasmiddel|wasverzachter|schoonmaak|reiniger|vuilniszak|afvalzak|folie|bakpapier|batterij|lampje|spons|doekje|bleek|zakjes|kaars/],
+  ["Overig", null],
+];
+// Volgorde van herkennen (eerste die past wint), los van de volgorde waarin de afdelingen getoond worden.
+const AISLE_CHECK = ["Huishouden", "Drogisterij", "Diepvries", "Dranken", "Ontbijt en beleg", "Snoep, koek en chips",
+  "Pasta, rijst en voorraad", "Brood en bakkerij", "Vlees en vis", "Zuivel, kaas en eieren", "Groente en fruit"].map(n => AISLES.findIndex(a => a[0] === n));
+const aisleOf = name => { const n = name.toLocaleLowerCase("nl"); const hit = AISLE_CHECK.find(i => AISLES[i][1].test(n)); return hit ?? AISLES.length - 1; };
+let byAisle = false;
+try { byAisle = localStorage.getItem("lists-aisle") === "1"; } catch (e) {}
+$("btnAisle").onclick = () => {
+  byAisle = !byAisle; try { localStorage.setItem("lists-aisle", byAisle ? "1" : "0"); } catch (e) {}
+  renderShopping(); say(byAisle ? "Gesorteerd per afdeling." : "Weer je eigen volgorde.");
+};
+
 function renderShopping() {
   const onList = items.filter(i => i.onList).sort((a, b) => (a.done - b.done) || ord(a, b, "listOrder") || a.name.localeCompare(b.name, "nl"));
   const std = items.filter(i => i.standard).sort((a, b) => ord(a, b, "stdOrder") || a.name.localeCompare(b.name, "nl"));
@@ -532,16 +624,31 @@ function renderShopping() {
   $("cntList").textContent = open || "";
   $("cntStd").textContent = std.length || "";
 
-  // Open items bovenaan, afgevinkte apart onder "In mandje"
+  // Open items bovenaan, afgevinkte apart onder "In mandje".
+  // Per afdeling: kopjes in de looprichting van de supermarkt; verslepen kan dan binnen een afdeling.
   const ul = $("ulList"), ud = $("ulListDone"); ul.replaceChildren(); ud.replaceChildren();
-  for (const it of onList) {
+  const groupOf = new Map(), seq = [];
+  if (byAisle) {
+    const sets = AISLES.map(() => []);
+    for (const it of openGroup) sets[aisleOf(it.name)].push(it);
+    sets.forEach((set, a) => { if (!set.length) return; seq.push({ head: AISLES[a][0], a }); set.forEach(it => { groupOf.set(it.id, [set, "a" + a]); seq.push(it); }); });
+  } else seq.push(...openGroup);
+  seq.push(...doneGroup);
+  $("lblListOpen").hidden = openGroup.length < 2;
+  $("btnAisle").classList.toggle("on", byAisle); $("btnAisle").setAttribute("aria-pressed", byAisle);
+  for (const it of seq) {
+    if (it.head) { const h = document.createElement("li"); h.className = "aisle"; h.textContent = it.head; ul.append(h); continue; }
     const li = document.createElement("li"); if (it.done) li.className = "done";
     const cb = checkbox("c-" + it.id, it.done, "Afvinken: " + it.name, v => w(() => col.doc(it.id).update({ done: v })));
     li.append(cb, nameLabel(cb.id, it.name));
     if (it.standard) { const t = document.createElement("span"); t.className = "tag"; t.textContent = "vast"; li.append(t); }
-    li.append(btn("", "✕", "Van lijst halen", () => removeWithUndo(col, [it], offList, `${it.name} van de lijst gehaald.`)));
-    li.dataset.group = it.done ? "done" : "open";
-    li.append(grip(li, it.done ? doneGroup : openGroup, it, "listOrder", col));
+    const off = () => removeWithUndo(col, [it], offList, `${it.name} van de lijst gehaald.`);
+    li.append(btn("", "✕", "Van lijst halen", off));
+    swipe(li, { text: it.done ? "Terug op lijst" : "In mandje", tone: "pos", fn: () => w(() => col.doc(it.id).update({ done: !it.done })) },
+      { text: "Van lijst", tone: "neg", fn: off });
+    const [group, key] = it.done ? [doneGroup, "done"] : groupOf.get(it.id) || [openGroup, "open"];
+    li.dataset.group = key;
+    li.append(grip(li, group, it, "listOrder", col));
     (it.done ? ud : ul).append(li);
   }
   ul.hidden = !openGroup.length; $("emptyList").hidden = !!onList.length || !loaded;
@@ -556,7 +663,9 @@ function renderShopping() {
     tg.textContent = it.onList ? "Op lijst" : "Zet op lijst";
     tg.onclick = () => w(() => col.doc(it.id).update(it.onList ? { onList: false, done: false }
       : { onList: true, done: false, listOrder: nextOrder(items.filter(i => i.onList), "listOrder") }));
-    li.append(name, tg, btn("", "🗑", "Vast item verwijderen", () => removeWithUndo(col, [it], null, `${it.name} verwijderd.`)));
+    const del = () => removeWithUndo(col, [it], null, `${it.name} verwijderd.`);
+    li.append(name, tg, btn("", "🗑", "Vast item verwijderen", del));
+    swipe(li, { text: it.onList ? "Van lijst" : "Op lijst", tone: "pos", fn: tg.onclick }, { text: "Verwijderen", tone: "neg", fn: del });
     li.dataset.group = "std";
     li.append(grip(li, std, it, "stdOrder", col));
     us.append(li);
@@ -633,7 +742,10 @@ function taskLi(t, group) {
   }
   li.append(cb, box);
   if (!t.done) li.append(btn("", "✎", "Taak aanpassen", () => startEditTask(t)));
-  li.append(btn("", "🗑", "Taak verwijderen", () => removeWithUndo(taskCol, [t], null, "Taak verwijderd.")));
+  const del = () => removeWithUndo(taskCol, [t], null, "Taak verwijderd.");
+  li.append(btn("", "🗑", "Taak verwijderen", del));
+  swipe(li, { text: t.done ? "Nog niet klaar" : "Klaar", tone: "pos", fn: () => cb.click() },
+    { text: "Verwijderen", tone: "neg", fn: del });
   if (!t.done) { li.dataset.group = "open"; li.append(grip(li, group, t, "sortOrder", taskCol)); }
   return li;
 }
@@ -730,7 +842,11 @@ function chLi(c, group) {
     li.append(cb, nameLabel(cb.id, c.name));
   }
   if (!c.done) li.append(btn("", "✎", "Challenge aanpassen", () => startEdit(c)));
-  li.append(btn("", "🗑", "Challenge verwijderen", () => removeWithUndo(chCol, [c], null, "Challenge verwijderd.")));
+  const del = () => removeWithUndo(chCol, [c], null, "Challenge verwijderd.");
+  li.append(btn("", "🗑", "Challenge verwijderen", del));
+  const tick = li.querySelector(".step.plus") || li.querySelector(".check");
+  swipe(li, tick && { text: tick.matches(".step") ? "+1" : c.done ? "Nog niet gehaald" : "Gehaald", tone: "pos", fn: () => tick.click() },
+    { text: "Verwijderen", tone: "neg", fn: del });
   if (!c.done) { li.dataset.group = "open"; li.append(grip(li, group, c, "sortOrder", chCol)); }
   return li;
 }
@@ -812,7 +928,9 @@ function buyLi(b, group) {
     s.setAttribute("aria-pressed", !!b.priority); li.append(s);
   }
   li.append(btn("", "✎", "Aanpassen", () => startEditBuy(b)));
-  li.append(btn("", "🗑", "Verwijderen", () => removeWithUndo(buyCol, [b], null, `${b.name} verwijderd.`)));
+  const del = () => removeWithUndo(buyCol, [b], null, `${b.name} verwijderd.`);
+  li.append(btn("", "🗑", "Verwijderen", del));
+  swipe(li, { text: b.bought ? "Nog niet gekocht" : "Gekocht", tone: "pos", fn: () => cb.click() }, { text: "Verwijderen", tone: "neg", fn: del });
   if (!b.bought) { li.dataset.group = "open"; li.append(grip(li, group, b, "sortOrder", buyCol)); }
   return li;
 }
