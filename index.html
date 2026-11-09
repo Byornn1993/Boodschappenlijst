@@ -127,7 +127,7 @@ form.add button:hover, .btn:hover { background: color-mix(in srgb, var(--accent)
 .actions .btn { flex: 1 1 auto; min-height: 42px; padding: 0 12px; font-size: .88rem; }
 
 .list { list-style: none; margin: 0; padding: 0; background: var(--card); border: 1px solid var(--card-line); border-radius: var(--r); overflow: hidden; }
-.list li { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--line-2); }
+.list li { display: flex; align-items: center; gap: 12px; padding: 6px 16px; min-height: 44px; border-top: 1px solid var(--line-2); }
 .list li:first-child { border-top: 0; }
 .check { appearance: none; width: 28px; height: 28px; flex: none; border: 2px solid var(--line); border-radius: 8px; cursor: pointer;
   display: grid; place-items: center; margin: 0; background: var(--input); }
@@ -148,7 +148,6 @@ li.done .name { color: var(--muted); text-decoration: line-through; text-decorat
 .list.sorting li { transition: transform .15s ease; }
 .list li.dragging { position: relative; z-index: 2; transition: none; background: var(--surface); box-shadow: 0 10px 28px rgba(0,0,0,.35); }
 body.drag-active, body.drag-active * { cursor: grabbing !important; user-select: none; -webkit-user-select: none; }
-.list li { padding-block: 6px; min-height: 44px; }
 .list li > .icon { margin-inline: -4px; }
 @media (max-width: 420px) { .list li { gap: 8px; padding-inline: 12px; } }
 .tag { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--accent); font-weight: 600;
@@ -373,9 +372,17 @@ body:not(.out) #viewLogin { display: none !important; }
 <div class="toast" id="toast" role="status" aria-live="polite" hidden><span id="msg"></span><button id="btnUndo" type="button" hidden>Ongedaan maken</button></div>
 
 <script>
-let col = null, chCol = null, buyCol = null, taskCol = null;
 let items = [], challenges = [], buys = [], tasks = [], view = "task", busy = false;
 const $ = id => document.getElementById(id);
+// Instellingen en bewaarde gegevens op dit toestel. localStorage kan ontbreken (privévenster): dan gewoon niets bewaren.
+const pref = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+};
+const keep = {
+  get(k) { try { return JSON.parse(pref.get(k)); } catch (e) { return null; } },
+  set(k, v) { pref.set(k, JSON.stringify(v)); },
+};
 const eur = new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" });
 
 // Melding onderaan. Met undo erbij staat er 5 seconden een knop "Ongedaan maken".
@@ -392,7 +399,6 @@ function errText(e) {
   if (e && (e.status === 401 || e.code === "PGRST301" || e.code === "PGRST303")) return "Je bent uitgelogd. Log opnieuw in.";
   return "Opslaan lukte niet. Probeer het opnieuw.";
 }
-async function w(fn) { try { await fn(); } catch (e) { say(errText(e)); } }
 
 const VIEWS = { task: ["tabTask", "viewTask", "Thuis"], list: ["tabList", "viewList", "Boodschappen"], std: ["tabStd", "viewStd", "Vaste items"],
                 ch: ["tabCh", "viewCh", "Challenges"], buy: ["tabBuy", "viewBuy", "Later kopen"] };
@@ -401,20 +407,17 @@ function setView(v) {
   view = v;
   for (const [k, [tab, sec]] of Object.entries(VIEWS)) { $(tab).setAttribute("aria-selected", k === v); $(sec).hidden = k !== v; }
   $("title").textContent = VIEWS[v][2];
-  try { localStorage.setItem("lists-tab", v); } catch (e) {}
+  pref.set("lists-tab", v);
 }
 for (const [k, [tab]] of Object.entries(VIEWS)) $(tab).onclick = () => { if (view !== k) { setView(k); scrollTo(0, 0); } };
 // Telefoon: de menubalk verdwijnt zolang je typt
 const typing = e => document.body.classList.toggle("typing", e.type === "focusin" && e.target.matches("input:not([type=checkbox])"));
 document.addEventListener("focusin", typing); document.addEventListener("focusout", typing);
-let savedTab = null;
-try { savedTab = localStorage.getItem("lists-tab"); } catch (e) {}
-setView(savedTab || "task");
+setView(pref.get("lists-tab") || "task");
 
 // Thema: per toestel bewaard, standaard donker. Elke tik: automatisch → licht → donker.
 const THEMES = { auto: "automatisch", light: "licht", dark: "donker" }, NEXT = { auto: "light", light: "dark", dark: "auto" };
-let theme = "dark";
-try { const t = localStorage.getItem("lists-theme"); if (THEMES[t]) theme = t; } catch (e) {}
+let theme = THEMES[pref.get("lists-theme")] ? pref.get("lists-theme") : "dark";
 function applyTheme() {
   if (theme === "auto") document.documentElement.removeAttribute("data-theme");
   else document.documentElement.setAttribute("data-theme", theme);
@@ -424,7 +427,7 @@ function applyTheme() {
 }
 $("btnTheme").onclick = () => {
   theme = NEXT[theme]; applyTheme();
-  try { localStorage.setItem("lists-theme", theme); } catch (e) {}
+  pref.set("lists-theme", theme);
   say("Thema: " + THEMES[theme] + (theme === "auto" ? " (zoals je toestel)" : ""));
 };
 applyTheme();
@@ -497,9 +500,9 @@ document.addEventListener("pointerdown", e => {
 // Na het vegen geen losse tik meer laten doorkomen (anders vinkt het label alsnog af)
 document.addEventListener("click", e => { if (e.isTrusted && Date.now() < swipedUntil) { e.preventDefault(); e.stopPropagation(); } }, true);
 // Eén keer een tip op een touchscherm
-if (matchMedia("(pointer: coarse)").matches) try {
-  if (!localStorage.getItem("lists-swipe-tip")) { localStorage.setItem("lists-swipe-tip", "1"); setTimeout(() => say("Tip: veeg een regel naar rechts om af te vinken, naar links om weg te halen."), 1500); }
-} catch (e) {}
+if (matchMedia("(pointer: coarse)").matches && !pref.get("lists-swipe-tip")) {
+  pref.set("lists-swipe-tip", "1"); setTimeout(() => say("Tip: veeg een regel naar rechts om af te vinken, naar links om weg te halen."), 1500);
+}
 
 // Tik op een lege plek van een regel = tik op het vinkje van die regel
 document.addEventListener("click", e => {
@@ -518,9 +521,9 @@ function reorder(group, from, to, key, store) {
   const prev = list[to - 1]?.[key], next = list[to + 1]?.[key];
   const value = to === 0 ? next - 1 : to === list.length - 1 ? prev + 1 : (prev + next) / 2;
   if (list.every(x => x === moved || Number.isFinite(x[key])) && Number.isFinite(value) && value !== prev && value !== next)
-    return w(() => store.doc(moved.id).update({ [key]: value }));
+    return store.doc(moved.id).update({ [key]: value });
   // Ontbrekende of te dicht bij elkaar liggende getallen: de hele lijst opnieuw nummeren.
-  return w(() => Promise.all(list.map((x, i) => x[key] === i + 1 ? null : store.doc(x.id).update({ [key]: i + 1 }))));
+  return Promise.all(list.map((x, i) => x[key] === i + 1 ? null : store.doc(x.id).update({ [key]: i + 1 })));
 }
 
 // Greepje rechts: vasthouden en slepen met vinger of muis, of met de pijltjestoetsen omhoog en omlaag.
@@ -609,10 +612,9 @@ const AISLES = [
 const AISLE_CHECK = ["Huishouden", "Drogisterij", "Diepvries", "Dranken", "Ontbijt en beleg", "Snoep, koek en chips",
   "Pasta, rijst en voorraad", "Brood en bakkerij", "Vlees en vis", "Zuivel, kaas en eieren", "Groente en fruit"].map(n => AISLES.findIndex(a => a[0] === n));
 const aisleOf = name => { const n = name.toLocaleLowerCase("nl"); const hit = AISLE_CHECK.find(i => AISLES[i][1].test(n)); return hit ?? AISLES.length - 1; };
-let byAisle = false;
-try { byAisle = localStorage.getItem("lists-aisle") === "1"; } catch (e) {}
+let byAisle = pref.get("lists-aisle") === "1";
 $("btnAisle").onclick = () => {
-  byAisle = !byAisle; try { localStorage.setItem("lists-aisle", byAisle ? "1" : "0"); } catch (e) {}
+  byAisle = !byAisle; pref.set("lists-aisle", byAisle ? "1" : "0");
   renderShopping(); say(byAisle ? "Gesorteerd per afdeling." : "Weer je eigen volgorde.");
 };
 
@@ -639,12 +641,12 @@ function renderShopping() {
   for (const it of seq) {
     if (it.head) { const h = document.createElement("li"); h.className = "aisle"; h.textContent = it.head; ul.append(h); continue; }
     const li = document.createElement("li"); if (it.done) li.className = "done";
-    const cb = checkbox("c-" + it.id, it.done, "Afvinken: " + it.name, v => w(() => col.doc(it.id).update({ done: v })));
+    const cb = checkbox("c-" + it.id, it.done, "Afvinken: " + it.name, v => col.doc(it.id).update({ done: v }));
     li.append(cb, nameLabel(cb.id, it.name));
     if (it.standard) { const t = document.createElement("span"); t.className = "tag"; t.textContent = "vast"; li.append(t); }
     const off = () => removeWithUndo(col, [it], offList, `${it.name} van de lijst gehaald.`);
     li.append(btn("", "✕", "Van lijst halen", off));
-    swipe(li, { text: it.done ? "Terug op lijst" : "In mandje", tone: "pos", fn: () => w(() => col.doc(it.id).update({ done: !it.done })) },
+    swipe(li, { text: it.done ? "Terug op lijst" : "In mandje", tone: "pos", fn: () => col.doc(it.id).update({ done: !it.done }) },
       { text: "Van lijst", tone: "neg", fn: off });
     const [group, key] = it.done ? [doneGroup, "done"] : groupOf.get(it.id) || [openGroup, "open"];
     li.dataset.group = key;
@@ -661,8 +663,8 @@ function renderShopping() {
     const name = document.createElement("span"); name.className = "name"; name.textContent = it.name;
     const tg = document.createElement("button"); tg.className = "toggle" + (it.onList ? " on" : "");
     tg.textContent = it.onList ? "Op lijst" : "Zet op lijst";
-    tg.onclick = () => w(() => col.doc(it.id).update(it.onList ? { onList: false, done: false }
-      : { onList: true, done: false, listOrder: nextOrder(items.filter(i => i.onList), "listOrder") }));
+    tg.onclick = () => col.doc(it.id).update(it.onList ? { onList: false, done: false }
+      : { onList: true, done: false, listOrder: nextOrder(items.filter(i => i.onList), "listOrder") });
     const del = () => removeWithUndo(col, [it], null, `${it.name} verwijderd.`);
     li.append(name, tg, btn("", "🗑", "Vast item verwijderen", del));
     swipe(li, { text: it.onList ? "Van lijst" : "Op lijst", tone: "pos", fn: tg.onclick }, { text: "Verwijderen", tone: "neg", fn: del });
@@ -696,8 +698,6 @@ function startEditTask(t) {
 function stopEditTask() { editTask = null; renderTasks(true); }
 
 function taskEditLi(t) {
-  const li = document.createElement("li");
-  const f = document.createElement("form"); f.className = "edit";
   const [ln, n] = field("et-name", "Naam", editTask.name, true);
   const ll = document.createElement("label"); ll.className = "fld"; ll.htmlFor = "et-link";
   const ls = document.createElement("span"); ls.textContent = "Gekoppeld aan";
@@ -706,29 +706,22 @@ function taskEditLi(t) {
   ll.append(ls, sel);
   n.oninput = () => editTask.name = n.value;
   sel.onchange = () => editTask.link = sel.value;
-  const save = document.createElement("button"); save.type = "submit"; save.className = "btn"; save.textContent = "Opslaan";
-  const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "btn ghost"; cancel.textContent = "Annuleer";
-  cancel.onclick = stopEditTask;
-  f.onkeydown = e => { if (e.key === "Escape") stopEditTask(); };
-  f.onsubmit = async e => {
-    e.preventDefault();
+  return editForm([ln, ll], stopEditTask, () => {
     const name = editTask.name.trim();
     if (!name) { say("Geef de taak een naam."); return; }
     const link = editTask.link || null;
     editTask = null;
-    await w(() => taskCol.doc(t.id).update({ name, link }));
+    taskCol.doc(t.id).update({ name, link });
     say("Opgeslagen.");
     renderTasks(true);
-  };
-  f.append(ln, ll, save, cancel);
-  li.append(f); return li;
+  });
 }
 
 function taskLi(t, group) {
   if (editTask && editTask.id === t.id) return taskEditLi(t);
   const li = document.createElement("li"); if (t.done) li.className = "done";
   const cb = checkbox("t-" + t.id, t.done, "Klaar: " + t.name,
-    v => w(() => taskCol.doc(t.id).update({ done: v, doneAt: v ? Date.now() : null })));
+    v => taskCol.doc(t.id).update({ done: v, doneAt: v ? Date.now() : null }));
   const box = document.createElement("div"); box.className = "task";
   box.append(nameLabel(cb.id, t.name));
   if (t.link && !t.done) {
@@ -772,6 +765,15 @@ function field(id, label, value, wide) {
   const i = document.createElement("input"); i.id = id; i.value = value; i.autocomplete = "off";
   l.append(s, i); return [l, i];
 }
+// Aanpassen in de regel zelf (Thuis, Challenges, Later kopen): velden + Opslaan/Annuleer, Escape = annuleren.
+function editForm(fields, cancel, save) {
+  const li = document.createElement("li"), f = document.createElement("form"); f.className = "edit";
+  const ok = Object.assign(document.createElement("button"), { type: "submit", className: "btn", textContent: "Opslaan" });
+  const no = Object.assign(document.createElement("button"), { type: "button", className: "btn ghost", textContent: "Annuleer", onclick: cancel });
+  f.onkeydown = e => { if (e.key === "Escape") cancel(); };
+  f.onsubmit = e => { e.preventDefault(); save(); };
+  f.append(...fields, ok, no); li.append(f); return li;
+}
 
 function startEdit(c) {
   editCh = { id: c.id, name: c.name, goal: c.goal ? String(c.goal) : "", count: String(c.count) };
@@ -781,8 +783,6 @@ function startEdit(c) {
 function stopEdit() { editCh = null; renderChallenges(true); }
 
 function chEditLi(c) {
-  const li = document.createElement("li");
-  const f = document.createElement("form"); f.className = "edit";
   const [ln, n] = field("ed-name", "Naam", editCh.name, true);
   const [lg, g] = field("ed-goal", "Doel (leeg = vinkje)", editCh.goal);
   const [lc, k] = field("ed-count", "Stand", editCh.count);
@@ -791,12 +791,7 @@ function chEditLi(c) {
   g.oninput = () => { editCh.goal = g.value; lc.hidden = !g.value.trim(); };
   k.oninput = () => editCh.count = k.value;
   lc.hidden = !editCh.goal.trim();
-  const save = document.createElement("button"); save.type = "submit"; save.className = "btn"; save.textContent = "Opslaan";
-  const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "btn ghost"; cancel.textContent = "Annuleer";
-  cancel.onclick = stopEdit;
-  f.onkeydown = e => { if (e.key === "Escape") stopEdit(); };
-  f.onsubmit = async e => {
-    e.preventDefault();
+  return editForm([ln, lg, lc], stopEdit, () => {
     const name = editCh.name.trim();
     if (!name) { say("Geef de challenge een naam."); return; }
     const goal = editCh.goal.trim() ? parseInt(editCh.goal, 10) : null;
@@ -805,12 +800,10 @@ function chEditLi(c) {
     if (goal && !(count >= 0)) { say("Vul bij stand een heel getal in, bv. 12."); return; }
     const done = !!goal && count >= goal;
     editCh = null;
-    await w(() => chCol.doc(c.id).update({ name, goal, count, done, doneAt: done ? Date.now() : null }));
+    chCol.doc(c.id).update({ name, goal, count, done, doneAt: done ? Date.now() : null });
     say(done ? "Opgeslagen. Doel gehaald, staat nu bij Gehaald." : "Opgeslagen.");
     renderChallenges(true);
-  };
-  f.append(ln, lg, lc, save, cancel);
-  li.append(f); return li;
+  });
 }
 
 function chLi(c, group) {
@@ -825,7 +818,7 @@ function chLi(c, group) {
     const bar = document.createElement("div"); bar.className = "bar";
     const fill = document.createElement("span"); fill.style.width = Math.min(100, c.count / c.goal * 100) + "%";
     bar.append(fill); box.append(row, bar);
-    const setCount = n => w(() => chCol.doc(c.id).update({ count: n, done: n >= c.goal, doneAt: n >= c.goal ? (c.doneAt || Date.now()) : null }));
+    const setCount = n => chCol.doc(c.id).update({ count: n, done: n >= c.goal, doneAt: n >= c.goal ? (c.doneAt || Date.now()) : null });
     const minus = document.createElement("button"); minus.className = "step"; minus.textContent = "−";
     minus.setAttribute("aria-label", "Eén terug: " + c.name); minus.disabled = c.count <= 0;
     minus.onclick = () => setCount(Math.max(0, c.count - 1));
@@ -838,7 +831,7 @@ function chLi(c, group) {
     }
   } else {
     const cb = checkbox("ch-" + c.id, c.done, "Gehaald: " + c.name,
-      v => w(() => chCol.doc(c.id).update({ done: v, doneAt: v ? Date.now() : null })));
+      v => chCol.doc(c.id).update({ done: v, doneAt: v ? Date.now() : null }));
     li.append(cb, nameLabel(cb.id, c.name));
   }
   if (!c.done) li.append(btn("", "✎", "Challenge aanpassen", () => startEdit(c)));
@@ -886,37 +879,28 @@ function startEditBuy(b) {
 function stopEditBuy() { editBuy = null; renderBuys(true); }
 
 function buyEditLi(b) {
-  const li = document.createElement("li");
-  const f = document.createElement("form"); f.className = "edit";
   const [ln, n] = field("eb-name", "Naam", editBuy.name, true);
   const [lp, p] = field("eb-price", "Prijs in € (leeg = geen)", editBuy.price);
   p.inputMode = "decimal";
   n.oninput = () => editBuy.name = n.value;
   p.oninput = () => editBuy.price = p.value;
-  const save = document.createElement("button"); save.type = "submit"; save.className = "btn"; save.textContent = "Opslaan";
-  const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "btn ghost"; cancel.textContent = "Annuleer";
-  cancel.onclick = stopEditBuy;
-  f.onkeydown = e => { if (e.key === "Escape") stopEditBuy(); };
-  f.onsubmit = async e => {
-    e.preventDefault();
+  return editForm([ln, lp], stopEditBuy, () => {
     const name = editBuy.name.trim();
     if (!name) { say("Geef het item een naam."); return; }
     const price = parsePrice(editBuy.price);
     if (Number.isNaN(price)) { say("Vul de prijs in als getal, bv. 249,99, of laat het leeg."); return; }
     editBuy = null;
-    await w(() => buyCol.doc(b.id).update({ name, price }));
+    buyCol.doc(b.id).update({ name, price });
     say("Opgeslagen.");
     renderBuys(true);
-  };
-  f.append(ln, lp, save, cancel);
-  li.append(f); return li;
+  });
 }
 
 function buyLi(b, group) {
   if (editBuy && editBuy.id === b.id) return buyEditLi(b);
   const li = document.createElement("li"); if (b.bought) li.className = "done";
   const cb = checkbox("b-" + b.id, b.bought, "Gekocht: " + b.name,
-    v => w(() => buyCol.doc(b.id).update({ bought: v, boughtAt: v ? Date.now() : null })));
+    v => buyCol.doc(b.id).update({ bought: v, boughtAt: v ? Date.now() : null }));
   // Prijs onder de naam, zodat de naam ook op een smal scherm ruimte houdt naast de knoppen
   const box = document.createElement("div"); box.className = "task";
   box.append(nameLabel(cb.id, b.name));
@@ -924,7 +908,7 @@ function buyLi(b, group) {
   li.append(cb, box);
   if (!b.bought) {
     const s = btn("star" + (b.priority ? " on" : ""), b.priority ? "★" : "☆", b.priority ? "Voorrang weghalen" : "Voorrang geven",
-      () => w(() => buyCol.doc(b.id).update({ priority: !b.priority })));
+      () => buyCol.doc(b.id).update({ priority: !b.priority }));
     s.setAttribute("aria-pressed", !!b.priority); li.append(s);
   }
   li.append(btn("", "✎", "Aanpassen", () => startEditBuy(b)));
@@ -955,25 +939,25 @@ function renderBuys(force) {
   $("buyTotalVal").textContent = eur.format(sum(open));
 }
 
-function exists(name) { return items.find(i => i.name.toLowerCase() === name.toLowerCase()); }
+const exists = name => items.find(i => i.name.toLocaleLowerCase("nl") === name.toLocaleLowerCase("nl"));
 
 function addToList(name) {
   const ex = exists(name), listOrder = nextOrder(items.filter(i => i.onList), "listOrder");
-  return w(() => ex ? col.doc(ex.id).update({ onList: true, done: false, ...(ex.onList && !ex.done ? {} : { listOrder }) })
-                    : col.add({ name, standard: false, onList: true, done: false, listOrder, created: Date.now() }));
+  return ex ? col.doc(ex.id).update({ onList: true, done: false, ...(ex.onList && !ex.done ? {} : { listOrder }) })
+                    : col.add({ name, standard: false, onList: true, done: false, listOrder, created: Date.now() });
 }
 function addToStd(name) {
   const ex = exists(name), stdOrder = nextOrder(items.filter(i => i.standard), "stdOrder");
-  return w(() => ex ? col.doc(ex.id).update({ standard: true, ...(ex.standard ? {} : { stdOrder }) })
-                    : col.add({ name, standard: true, onList: false, done: false, stdOrder, created: Date.now() }));
+  return ex ? col.doc(ex.id).update({ standard: true, ...(ex.standard ? {} : { stdOrder }) })
+                    : col.add({ name, standard: true, onList: false, done: false, stdOrder, created: Date.now() });
 }
 $("addList").onsubmit = e => {
-  e.preventDefault(); if (!col) return;
+  e.preventDefault();
   const name = $("inList").value.trim(); if (!name) return;
   $("inList").value = ""; drawSuggList(); addToList(name);
 };
 $("addStd").onsubmit = e => {
-  e.preventDefault(); if (!col) return;
+  e.preventDefault();
   const name = $("inStd").value.trim(); if (!name) return;
   $("inStd").value = ""; drawSuggStd(); addToStd(name);
 };
@@ -1013,29 +997,29 @@ function suggest(inputId, boxId, skip, pick) {
 }
 const drawSuggList = suggest("inList", "suggList", i => i.onList && !i.done, addToList);
 const drawSuggStd = suggest("inStd", "suggStd", i => i.standard, addToStd);
-$("addTask").onsubmit = async e => {
-  e.preventDefault(); if (!taskCol) return;
+$("addTask").onsubmit = e => {
+  e.preventDefault();
   const name = $("inTask").value.trim(); if (!name) return;
   const chosen = $("inTaskLink").value, link = chosen || guessLink(name);
   $("inTask").value = ""; $("inTaskLink").value = "";
-  await w(() => taskCol.add({ name, link, done: false, doneAt: null, sortOrder: nextOrder(tasks, "sortOrder"), created: Date.now() }));
+  taskCol.add({ name, link, done: false, doneAt: null, sortOrder: nextOrder(tasks, "sortOrder"), created: Date.now() });
   if (link && !chosen) say(`Gekoppeld aan ${LINKS[link]}. Aanpassen kan met het potloodje.`);
 };
-$("addCh").onsubmit = async e => {
-  e.preventDefault(); if (!chCol) return;
+$("addCh").onsubmit = e => {
+  e.preventDefault();
   const name = $("inCh").value.trim(); if (!name) return;
   const raw = $("inChGoal").value.trim(), goal = raw ? parseInt(raw, 10) : null;
   if (raw && !(goal > 0)) { say("Vul bij doel een heel getal in, bv. 30, of laat het leeg."); return; }
   $("inCh").value = ""; $("inChGoal").value = "";
-  await w(() => chCol.add({ name, goal, count: 0, done: false, doneAt: null, sortOrder: nextOrder(challenges, "sortOrder"), created: Date.now() }));
+  chCol.add({ name, goal, count: 0, done: false, doneAt: null, sortOrder: nextOrder(challenges, "sortOrder"), created: Date.now() });
 };
-$("addBuy").onsubmit = async e => {
-  e.preventDefault(); if (!buyCol) return;
+$("addBuy").onsubmit = e => {
+  e.preventDefault();
   const name = $("inBuy").value.trim(); if (!name) return;
   const price = parsePrice($("inBuyPrice").value);
   if (Number.isNaN(price)) { say("Vul de prijs in als getal, bv. 249,99, of laat het leeg."); return; }
   $("inBuy").value = ""; $("inBuyPrice").value = "";
-  await w(() => buyCol.add({ name, price, priority: false, bought: false, boughtAt: null, sortOrder: nextOrder(buys, "sortOrder"), created: Date.now() }));
+  buyCol.add({ name, price, priority: false, bought: false, boughtAt: null, sortOrder: nextOrder(buys, "sortOrder"), created: Date.now() });
 };
 
 async function bulk(list, fn, doneMsg, undo) {
@@ -1053,7 +1037,6 @@ function removeWithUndo(store, list, patchFor, doneMsg) {
 // Van de boodschappenlijst halen: het item blijft bewaard, als vast item of als suggestie voor de volgende keer.
 const offList = () => ({ onList: false, done: false });
 $("btnFill").onclick = () => {
-  if (!col) return;
   const todo = items.filter(i => i.standard && (!i.onList || i.done));
   if (!todo.length) { say(items.some(i => i.standard) ? "Alle vaste items staan al op je lijst." : "Je hebt nog geen vaste items. Voeg ze toe bij 'Vast'."); return; }
   // Nieuw op de lijst: onderaan, in de volgorde van Vast.
@@ -1063,13 +1046,11 @@ $("btnFill").onclick = () => {
     `${todo.length} vaste item(s) op je lijst gezet.`);
 };
 $("btnClearTasks").onclick = () => {
-  if (!taskCol) return;
   const done = tasks.filter(t => t.done);
   if (!done.length) return;
   removeWithUndo(taskCol, done, null, done.length === 1 ? "1 taak opgeruimd." : `${done.length} taken opgeruimd.`);
 };
 $("btnClear").onclick = () => {
-  if (!col) return;
   const done = items.filter(i => i.onList && i.done);
   if (!done.length) { say("Er is nog niets afgevinkt."); return; }
   removeWithUndo(col, done, offList, done.length === 1 ? "1 item opgeruimd." : `${done.length} items opgeruimd.`);
@@ -1108,10 +1089,6 @@ function fromRow(row) {
 // De wachtrij gaat op volgorde naar de database; zonder bereik blijft hij bewaard (ook als je de app sluit)
 // tot er weer verbinding is. De laatst opgehaalde lijsten staan ook op het toestel, zodat de app offline opent.
 let userId = null, queue = [], flushing = false, retryTimer = null;
-const keep = {
-  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
-};
 const saveQueue = () => { if (userId) keep.set("lists-queue-" + userId, queue); };
 const saveCache = () => { if (userId) keep.set("lists-cache-" + userId, Object.fromEntries(tables.map(t => [t.table, t.base]))); };
 
@@ -1187,20 +1164,20 @@ function collection(table, apply) {
   };
 }
 
-col = collection("lists_items", r => {
+const col = collection("lists_items", r => {
   items = r.map(i => ({ ...i, done: !!i.done, onList: !!i.onList, standard: !!i.standard }));
 });
-chCol = collection("lists_challenges", r => {
+const chCol = collection("lists_challenges", r => {
   challenges = r.map(c => {
     const goal = Number.isInteger(c.goal) && c.goal > 0 ? c.goal : null;
     return { ...c, goal, count: Math.max(0, Number(c.count) || 0), done: !!c.done, created: c.created || 0 };
   });
 });
-buyCol = collection("lists_wishlist", r => {
+const buyCol = collection("lists_wishlist", r => {
   buys = r.map(b => ({ ...b, price: typeof b.price === "number" && isFinite(b.price) ? b.price : null,
     priority: !!b.priority, bought: !!b.bought, created: b.created || 0 }));
 });
-taskCol = collection("lists_tasks", r => {
+const taskCol = collection("lists_tasks", r => {
   tasks = r.map(t => ({ ...t, link: LINKS[t.link] ? t.link : null, done: !!t.done, created: t.created || 0 }));
 });
 const tables = [taskCol, col, chCol, buyCol];
@@ -1284,7 +1261,7 @@ $("loginForm").onsubmit = async e => {
   $("btnLogin").disabled = false;
 };
 // Alleen op dit toestel en in deze app uitloggen, Be Strong blijft ingelogd.
-$("btnLogout").onclick = () => w(async () => { const { error } = await sb.auth.signOut({ scope: "local" }); if (error) throw error; });
+$("btnLogout").onclick = async () => { const { error } = await sb.auth.signOut({ scope: "local" }); if (error) say(errText(error)); };
 
 if (sb) sb.auth.onAuthStateChange((_event, session) => { setTimeout(() => onSession(session)); });
 else { document.body.classList.remove("boot"); document.body.classList.add("out"); $("btnLogin").disabled = true;
