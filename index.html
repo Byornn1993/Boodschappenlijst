@@ -196,7 +196,8 @@ li.done .price { color: var(--muted); }
 .login .btn:disabled { opacity: .6; cursor: default; }
 #btnLogout { align-self: center; }
 body.boot .tabs, body.out .tabs, body.boot section, body.out section:not(#viewLogin),
-body.boot .sync, body.out .sync, body.boot #btnLogout, body.out #btnLogout { display: none !important; }
+body.boot .sync, body.out .sync, body.boot #btnLogout, body.out #btnLogout, body.out #loading { display: none !important; }
+#loading strong { margin: 0; }
 body:not(.out) #viewLogin { display: none !important; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
@@ -219,6 +220,8 @@ body:not(.out) #viewLogin { display: none !important; }
     <button role="tab" id="tabCh" aria-selected="false">Challenges <span class="count" id="cntCh"></span></button>
     <button role="tab" id="tabBuy" aria-selected="false">Later kopen <span class="count" id="cntBuy"></span></button>
   </div>
+
+  <div class="empty" id="loading" role="status"><strong id="loadingText">Laden…</strong></div>
 
   <section id="viewTask">
     <div style="display:flex;flex-direction:column;gap:16px">
@@ -459,9 +462,12 @@ function dragStart(e, li, drop) {
 }
 
 // Tijdens het slepen niet opnieuw tekenen (bv. door een sync), anders verdwijnt de regel onder je vinger.
+// Zolang nog niet alles is opgehaald staat er "Laden…" en geen "Je lijst is leeg".
+let loaded = false;
 function render() {
   if (dragging) { renderLater = true; return; }
   const focused = document.activeElement?.dataset?.grip;
+  loaded = tables.every(t => t.ready); $("loading").hidden = loaded;
   renderTasks(); renderShopping(); renderChallenges(); renderBuys();
   if (focused) document.querySelector(`[data-grip="${focused}"]`)?.focus();
 }
@@ -485,7 +491,7 @@ function renderShopping() {
     li.append(grip(li, it.done ? doneGroup : openGroup, it, "listOrder", col));
     ul.append(li);
   }
-  ul.hidden = !onList.length; $("emptyList").hidden = !!onList.length;
+  ul.hidden = !onList.length; $("emptyList").hidden = !!onList.length || !loaded;
 
   const us = $("ulStd"); us.replaceChildren();
   for (const it of std) {
@@ -500,7 +506,7 @@ function renderShopping() {
     li.append(grip(li, std, it, "stdOrder", col));
     us.append(li);
   }
-  us.hidden = !std.length; $("emptyStd").hidden = !!std.length;
+  us.hidden = !std.length; $("emptyStd").hidden = !!std.length || !loaded;
 }
 
 // ── Taken. Een gekoppelde taak toont wat er op die lijst nog open staat.
@@ -586,7 +592,7 @@ function renderTasks(force) {
   if (editTask && !force && $("et-name")) return;
   $("ulTaskOpen").replaceChildren(...open.map(t => taskLi(t, open)));
   $("ulTaskDone").replaceChildren(...done.map(t => taskLi(t, done)));
-  $("ulTaskOpen").hidden = !open.length; $("emptyTask").hidden = !!tasks.length;
+  $("ulTaskOpen").hidden = !open.length; $("emptyTask").hidden = !!tasks.length || !loaded;
   $("ulTaskDone").hidden = $("lblTaskDone").hidden = $("taskActions").hidden = !done.length;
 }
 
@@ -683,7 +689,7 @@ function renderChallenges(force) {
   $("ulChOpen").replaceChildren(...open.map(c => chLi(c, open)));
   $("ulChDone").replaceChildren(...done.map(c => chLi(c, done)));
   $("ulChOpen").hidden = !open.length; $("lblChOpen").hidden = !open.length || !done.length;
-  $("emptyCh").hidden = !!challenges.length;
+  $("emptyCh").hidden = !!challenges.length || !loaded;
   $("ulChDone").hidden = $("lblChDone").hidden = !done.length;
 }
 
@@ -762,7 +768,7 @@ function renderBuys(force) {
   if (editBuy && !force && $("eb-name")) return;
   $("ulBuyOpen").replaceChildren(...open.map(b => buyLi(b, open)));
   $("ulBuyDone").replaceChildren(...done.map(b => buyLi(b, done)));
-  $("ulBuyOpen").hidden = !open.length; $("emptyBuy").hidden = !!buys.length;
+  $("ulBuyOpen").hidden = !open.length; $("emptyBuy").hidden = !!buys.length || !loaded;
   $("ulBuyDone").hidden = $("lblBuyDone").hidden = !done.length;
   $("buySpent").textContent = done.some(b => b.price != null) ? eur.format(sum(done)) : "";
   const priced = open.filter(b => b.price != null);
@@ -884,7 +890,7 @@ function fromRow(row) {
 // Eén tabel. Een wijziging is meteen zichtbaar, daarna gaat ze naar de database en wordt de tabel opnieuw opgehaald.
 // Zolang er nog iets verstuurd wordt, wordt ophalen uitgesteld, zodat een snelle tik niet wordt teruggedraaid.
 function collection(table, apply) {
-  let rows = [], writing = 0, timer = null, loadId = 0;
+  let rows = [], writing = 0, timer = null, loadId = 0, ready = false;
   const trash = new Map(); // verwijderde regels, voor "Ongedaan maken"
   const show = () => { apply(rows.filter(r => typeof r.name === "string")); render(); };
   const load = async () => {
@@ -894,7 +900,7 @@ function collection(table, apply) {
     if (id !== loadId || writing) return;
     if (error) { reachable = false; showStatus(); return; }
     reachable = true; showStatus();
-    rows = data.map(fromRow); show();
+    rows = data.map(fromRow); ready = true; show();
   };
   const refresh = () => { clearTimeout(timer); timer = setTimeout(load, 200); };
   const write = async (change, send) => {
@@ -904,7 +910,8 @@ function collection(table, apply) {
   };
   return {
     table, refresh, load,
-    clear() { loadId++; clearTimeout(timer); rows = []; show(); },
+    get ready() { return ready; },
+    clear() { loadId++; clearTimeout(timer); rows = []; ready = false; show(); },
     add(data) {
       const id = crypto.randomUUID();
       return write(r => [...r, { id, ...data }], () => sb.from(table).insert({ id, ...toRow(data) }));
@@ -948,6 +955,7 @@ function showStatus() {
   const ok = live && reachable;
   $("dot").className = ok ? "dot on" : "dot";
   $("syncText").textContent = ok ? "Gesynchroniseerd" : !reachable || !navigator.onLine ? "Verbinding verbroken" : "Verbinden…";
+  $("loadingText").textContent = !reachable || !navigator.onLine ? "Geen verbinding. Je lijsten verschijnen zodra er bereik is." : "Laden…";
 }
 
 function disconnect() {
