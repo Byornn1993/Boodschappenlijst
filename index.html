@@ -36,8 +36,8 @@
   --card:rgba(255,255,255,.75); --card-line:rgba(176,141,87,.25); --field:rgba(255,255,255,.75);
   --surface:#FFFDF9; --surface-2:#F3ECE0; --input:#FFFFFF;
   --line:#E4D9C6; --line-2:rgba(44,62,80,.08);
-  --fg:#101418; --muted:#6E6253; --champ:#B08D57;
-  --accent:#8E6E3E; --accent-fg:#FBF6EE; --accent-soft:#F1E7D4;
+  --fg:#101418; --muted:#6E6253; --champ:#7A5C2E;
+  --accent:#7E6036; --accent-fg:#FBF6EE; --accent-soft:#F1E7D4;
   --pos:#4E7F5A; --neg:#A9503E; --warn:#8A6118;
   --shadow:0 1px 2px rgba(16,20,24,.05),0 4px 14px rgba(16,20,24,.04); color-scheme:light } }
 :root[data-theme="light"] {
@@ -45,8 +45,8 @@
   --card:rgba(255,255,255,.75); --card-line:rgba(176,141,87,.25); --field:rgba(255,255,255,.75);
   --surface:#FFFDF9; --surface-2:#F3ECE0; --input:#FFFFFF;
   --line:#E4D9C6; --line-2:rgba(44,62,80,.08);
-  --fg:#101418; --muted:#6E6253; --champ:#B08D57;
-  --accent:#8E6E3E; --accent-fg:#FBF6EE; --accent-soft:#F1E7D4;
+  --fg:#101418; --muted:#6E6253; --champ:#7A5C2E;
+  --accent:#7E6036; --accent-fg:#FBF6EE; --accent-soft:#F1E7D4;
   --pos:#4E7F5A; --neg:#A9503E; --warn:#8A6118;
   --shadow:0 1px 2px rgba(16,20,24,.05),0 4px 14px rgba(16,20,24,.04); color-scheme:light }
 
@@ -374,6 +374,8 @@ $("btnTheme").onclick = () => {
   say("Thema: " + THEMES[theme] + (theme === "auto" ? " (zoals je toestel)" : ""));
 };
 applyTheme();
+// Op "automatisch" volgt de statusbalk mee als het toestel van licht naar donker wisselt
+matchMedia("(prefers-color-scheme: light)").addEventListener?.("change", () => { if (theme === "auto") applyTheme(); });
 
 // Lijn-iconen in Lucide-stijl voor de knoppen in de lijsten
 const ICONS = {
