@@ -74,20 +74,26 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .theme svg.i { width: 16px; height: 16px; color: var(--accent); }
 .theme:hover { border-color: var(--accent); }
 
-.tabs { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--card); border: 1px solid var(--card-line);
+.tabs { display: grid; grid-template-columns: repeat(5, 1fr); background: var(--card); border: 1px solid var(--card-line);
   border-radius: var(--r); padding: 4px; gap: 4px; }
-.tabs button { font: 600 .88rem var(--font-body); border: 0; border-radius: var(--r-sm); padding: 10px 6px; background: transparent;
+.tabs button { font: 600 .88rem var(--font-body); border: 0; border-radius: var(--r-sm); padding: 10px 4px; background: transparent;
   color: var(--muted); cursor: pointer; }
 .tabs button:hover { background: color-mix(in srgb, var(--champ) 7%, transparent); color: var(--fg); }
 .tabs button[aria-selected="true"] { background: var(--accent-soft); color: var(--fg); box-shadow: inset 0 -2px 0 var(--accent); }
 .tabs button[aria-selected="true"] .count { color: var(--accent); }
-@media (max-width: 460px) { .tabs { grid-template-columns: 1fr 1fr; } }
+/* Smal scherm: Taken over de volle breedte bovenaan, de andere vier eronder in twee kolommen */
+@media (max-width: 560px) { .tabs { grid-template-columns: 1fr 1fr; } .tabs button:first-child { grid-column: 1 / -1; } }
 
 form.add { display: flex; gap: 8px; flex-wrap: wrap; }
 form.add input { flex: 1 1 160px; min-width: 0; height: 46px; box-sizing: border-box; font: 16px var(--font-body); padding: 0 14px;
   border-radius: 12px; border: 1px solid var(--card-line); background: var(--field); color: var(--fg); }
 form.add input::placeholder, .fld input::placeholder { color: var(--muted); opacity: .75; }
 form.add input.small { flex: 0 1 120px; }
+form.add select, .fld select { height: 46px; box-sizing: border-box; font: 16px var(--font-body); padding: 0 10px; border-radius: 12px;
+  border: 1px solid var(--card-line); background: var(--field); color: var(--fg); flex: 0 1 150px; min-width: 0; }
+.fld select { height: 44px; border-color: var(--line); background: var(--input); text-transform: none; letter-spacing: 0; }
+form.add select option, .fld select option { background: var(--surface); color: var(--fg); }
+select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 form.add button, .btn { font: 600 .95rem var(--font-body); border: 1px solid var(--accent); border-radius: 12px; padding: 0 18px; min-height: 46px;
   background: var(--accent); color: var(--accent-fg); cursor: pointer; }
@@ -134,6 +140,16 @@ body.drag-active, body.drag-active * { cursor: grabbing !important; user-select:
   border-radius: var(--r); padding: 14px 16px; }
 .confirm span { flex: 1 1 200px; font-size: .92rem; }
 .confirm .btn { min-height: 40px; }
+
+/* Taken: gekoppelde lijst eronder als knop, tik = naar die lijst */
+.task { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.task .name { flex: none; }
+.peek { align-self: flex-start; max-width: 100%; text-align: left; font: 500 .82rem/1.35 var(--font-body); color: var(--champ);
+  background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); border-radius: var(--r-sm);
+  padding: 6px 10px; cursor: pointer; overflow-wrap: anywhere; }
+.peek b { color: var(--accent); font-weight: 600; }
+.peek:hover { border-color: var(--accent); color: var(--fg); }
+li.done .peek { display: none; }
 
 /* Challenges: naam + voortgang met een balk en een +1 knop */
 .ch { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
@@ -186,7 +202,7 @@ body:not(.out) #viewLogin { display: none !important; }
 
 <div class="wrap">
   <header>
-    <h1 id="title">Boodschappen</h1>
+    <h1 id="title">Taken</h1>
     <div class="meta">
       <span class="sync"><span class="dot" id="dot"></span><span id="syncText">Verbinden…</span></span>
       <button class="theme" id="btnTheme" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg><span id="themeLbl">Thema: donker</span></button>
@@ -194,13 +210,36 @@ body:not(.out) #viewLogin { display: none !important; }
   </header>
 
   <div class="tabs" role="tablist">
-    <button role="tab" id="tabList" aria-selected="true">Lijstje <span class="count" id="cntList"></span></button>
+    <button role="tab" id="tabTask" aria-selected="true">Taken <span class="count" id="cntTask"></span></button>
+    <button role="tab" id="tabList" aria-selected="false">Lijstje <span class="count" id="cntList"></span></button>
     <button role="tab" id="tabStd" aria-selected="false">Vast <span class="count" id="cntStd"></span></button>
     <button role="tab" id="tabCh" aria-selected="false">Challenges <span class="count" id="cntCh"></span></button>
     <button role="tab" id="tabBuy" aria-selected="false">Later kopen <span class="count" id="cntBuy"></span></button>
   </div>
 
-  <section id="viewList">
+  <section id="viewTask">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <form class="add" id="addTask">
+        <input id="inTask" placeholder="Nieuwe taak, bv. winkelen" autocomplete="off" enterkeyhint="done">
+        <select id="inTaskLink" aria-label="Koppelen aan een lijst (optioneel)">
+          <option value="">Geen lijst</option>
+          <option value="list">Lijstje</option>
+          <option value="buy">Later kopen</option>
+          <option value="ch">Challenges</option>
+        </select>
+        <button type="submit">Voeg toe</button>
+      </form>
+      <ul class="list" id="ulTaskOpen"></ul>
+      <div class="empty" id="emptyTask" hidden><strong>Geen taken</strong>Zet hier wat je moet doen. Koppel een taak aan een lijst, bv. winkelen aan Lijstje, en je ziet meteen welke items je nodig hebt.</div>
+      <div class="section-label" id="lblTaskDone" hidden><span>Klaar</span></div>
+      <ul class="list" id="ulTaskDone" hidden></ul>
+      <div class="actions" id="taskActions" hidden>
+        <button class="btn ghost" id="btnClearTasks">Klaar opruimen</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="viewList" hidden>
     <div style="display:flex;flex-direction:column;gap:16px">
       <form class="add" id="addList">
         <input id="inList" placeholder="Iets toevoegen, bv. bananen" autocomplete="off" enterkeyhint="done">
@@ -278,8 +317,8 @@ body:not(.out) #viewLogin { display: none !important; }
 </div>
 
 <script>
-let col = null, chCol = null, buyCol = null;
-let items = [], challenges = [], buys = [], view = "list", busy = false, pending = null;
+let col = null, chCol = null, buyCol = null, taskCol = null;
+let items = [], challenges = [], buys = [], tasks = [], view = "task", busy = false, pending = null;
 const $ = id => document.getElementById(id);
 const eur = new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" });
 
@@ -291,17 +330,19 @@ function errText(e) {
 }
 async function w(fn) { try { await fn(); } catch (e) { say(errText(e)); } }
 
-const VIEWS = { list: ["tabList", "viewList", "Boodschappen"], std: ["tabStd", "viewStd", "Boodschappen"],
+const VIEWS = { task: ["tabTask", "viewTask", "Taken"], list: ["tabList", "viewList", "Boodschappen"], std: ["tabStd", "viewStd", "Boodschappen"],
                 ch: ["tabCh", "viewCh", "Challenges"], buy: ["tabBuy", "viewBuy", "Later kopen"] };
 function setView(v) {
-  if (!VIEWS[v]) v = "list";
+  if (!VIEWS[v]) v = "task";
   view = v;
   for (const [k, [tab, sec]] of Object.entries(VIEWS)) { $(tab).setAttribute("aria-selected", k === v); $(sec).hidden = k !== v; }
   $("title").textContent = VIEWS[v][2];
   try { localStorage.setItem("lists-tab", v); } catch (e) {}
 }
 for (const [k, [tab]] of Object.entries(VIEWS)) $(tab).onclick = () => setView(k);
-try { const t = localStorage.getItem("lists-tab"); if (t) setView(t); } catch (e) {}
+let savedTab = null;
+try { savedTab = localStorage.getItem("lists-tab"); } catch (e) {}
+setView(savedTab || "task");
 
 // Thema: per toestel bewaard, standaard donker. Elke tik: automatisch → licht → donker.
 const THEMES = { auto: "automatisch", light: "licht", dark: "donker" }, NEXT = { auto: "light", light: "dark", dark: "auto" };
@@ -415,7 +456,7 @@ function dragStart(e, li, drop) {
 function render() {
   if (dragging) { renderLater = true; return; }
   const focused = document.activeElement?.dataset?.grip;
-  renderShopping(); renderChallenges(); renderBuys();
+  renderTasks(); renderShopping(); renderChallenges(); renderBuys();
   if (focused) document.querySelector(`[data-grip="${focused}"]`)?.focus();
 }
 
@@ -455,6 +496,93 @@ function renderShopping() {
     us.append(li);
   }
   us.hidden = !std.length; $("emptyStd").hidden = !!std.length;
+}
+
+// ── Taken. Een gekoppelde taak toont wat er op die lijst nog open staat.
+const LINKS = { list: "Lijstje", buy: "Later kopen", ch: "Challenges" };
+// Typ je "winkelen" of "boodschappen" zonder lijst te kiezen, dan wordt de taak aan Lijstje gekoppeld.
+const guessLink = name => /winkel|boodschap|supermarkt/i.test(name) ? "list" : null;
+
+function linkInfo(link) {
+  const pick = link === "list" ? { open: items.filter(i => i.onList && !i.done).sort((a, b) => ord(a, b, "listOrder")), word: "nodig", none: "niets nodig" }
+    : link === "buy" ? { open: buys.filter(b => !b.bought).sort((a, b) => ord(a, b, "sortOrder")), word: "open", none: "niets open" }
+    : { open: challenges.filter(c => !c.done).sort((a, b) => ord(a, b, "sortOrder")), word: "bezig", none: "niets bezig" };
+  const names = pick.open.map(x => x.name), shown = names.slice(0, 6).join(", ");
+  return names.length ? `${names.length} ${pick.word}: ${shown}${names.length > 6 ? ` +${names.length - 6}` : ""}` : pick.none;
+}
+
+let editTask = null; // concept van de taak die je nu aanpast: { id, name, link }
+
+function startEditTask(t) {
+  editTask = { id: t.id, name: t.name, link: t.link || "" };
+  renderTasks(true);
+  const n = $("et-name"); if (n) { n.focus(); n.select(); }
+}
+function stopEditTask() { editTask = null; renderTasks(true); }
+
+function taskEditLi(t) {
+  const li = document.createElement("li");
+  const f = document.createElement("form"); f.className = "edit";
+  const [ln, n] = field("et-name", "Naam", editTask.name, true);
+  const ll = document.createElement("label"); ll.className = "fld"; ll.htmlFor = "et-link";
+  const ls = document.createElement("span"); ls.textContent = "Gekoppeld aan";
+  const sel = document.createElement("select"); sel.id = "et-link";
+  for (const [v, txt] of [["", "Geen lijst"], ...Object.entries(LINKS)]) sel.add(new Option(txt, v, false, v === editTask.link));
+  ll.append(ls, sel);
+  n.oninput = () => editTask.name = n.value;
+  sel.onchange = () => editTask.link = sel.value;
+  const save = document.createElement("button"); save.type = "submit"; save.className = "btn"; save.textContent = "Opslaan";
+  const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "btn ghost"; cancel.textContent = "Annuleer";
+  cancel.onclick = stopEditTask;
+  f.onkeydown = e => { if (e.key === "Escape") stopEditTask(); };
+  f.onsubmit = async e => {
+    e.preventDefault();
+    const name = editTask.name.trim();
+    if (!name) { say("Geef de taak een naam."); return; }
+    const link = editTask.link || null;
+    editTask = null;
+    await w(() => taskCol.doc(t.id).update({ name, link }));
+    say("Opgeslagen.");
+    renderTasks(true);
+  };
+  f.append(ln, ll, save, cancel);
+  li.append(f); return li;
+}
+
+function taskLi(t, group) {
+  if (editTask && editTask.id === t.id) return taskEditLi(t);
+  const li = document.createElement("li"); if (t.done) li.className = "done";
+  const cb = checkbox("t-" + t.id, t.done, "Klaar: " + t.name,
+    v => w(() => taskCol.doc(t.id).update({ done: v, doneAt: v ? Date.now() : null })));
+  const box = document.createElement("div"); box.className = "task";
+  box.append(nameLabel(cb.id, t.name));
+  if (t.link && !t.done) {
+    const info = linkInfo(t.link);
+    const p = document.createElement("button"); p.type = "button"; p.className = "peek";
+    const b = document.createElement("b"); b.textContent = LINKS[t.link];
+    p.append(b, " · " + info);
+    p.setAttribute("aria-label", `Open ${LINKS[t.link]}: ${info}`);
+    p.onclick = () => { setView(t.link); scrollTo(0, 0); };
+    box.append(p);
+  }
+  li.append(cb, box);
+  if (!t.done) li.append(btn("", "✎", "Taak aanpassen", () => startEditTask(t)));
+  li.append(btn("", "🗑", "Taak verwijderen", () => w(() => taskCol.doc(t.id).delete())));
+  if (!t.done) { li.dataset.group = "open"; li.append(grip(li, group, t, "sortOrder", taskCol)); }
+  return li;
+}
+
+function renderTasks(force) {
+  const open = tasks.filter(t => !t.done).sort((a, b) => ord(a, b, "sortOrder") || a.created - b.created);
+  const done = tasks.filter(t => t.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
+  $("cntTask").textContent = tasks.length ? `· ${open.length}` : "";
+  if (editTask && !open.some(t => t.id === editTask.id)) editTask = null;
+  // Tijdens het aanpassen niet opnieuw tekenen bij een sync, anders verlies je de focus in het invoerveld
+  if (editTask && !force && $("et-name")) return;
+  $("ulTaskOpen").replaceChildren(...open.map(t => taskLi(t, open)));
+  $("ulTaskDone").replaceChildren(...done.map(t => taskLi(t, done)));
+  $("ulTaskOpen").hidden = !open.length; $("emptyTask").hidden = !!tasks.length;
+  $("ulTaskDone").hidden = $("lblTaskDone").hidden = $("taskActions").hidden = !done.length;
 }
 
 let editCh = null; // concept van de challenge die je nu aanpast: { id, name, goal, count }
@@ -657,6 +785,14 @@ $("addStd").onsubmit = async e => {
   await w(() => ex ? col.doc(ex.id).update({ standard: true, ...(ex.standard ? {} : { stdOrder }) })
                    : col.add({ name, standard: true, onList: false, done: false, stdOrder, created: Date.now() }));
 };
+$("addTask").onsubmit = async e => {
+  e.preventDefault(); if (!taskCol) return;
+  const name = $("inTask").value.trim(); if (!name) return;
+  const chosen = $("inTaskLink").value, link = chosen || guessLink(name);
+  $("inTask").value = ""; $("inTaskLink").value = "";
+  await w(() => taskCol.add({ name, link, done: false, doneAt: null, sortOrder: nextOrder(tasks, "sortOrder"), created: Date.now() }));
+  if (link && !chosen) say(`Gekoppeld aan ${LINKS[link]}. Aanpassen kan met het potloodje.`);
+};
 $("addCh").onsubmit = async e => {
   e.preventDefault(); if (!chCol) return;
   const name = $("inCh").value.trim(); if (!name) return;
@@ -694,6 +830,13 @@ $("btnFill").onclick = () => {
   const order = new Map(todo.filter(i => !i.onList).sort((a, b) => ord(a, b, "stdOrder")).map(i => [i.id, next++]));
   bulk(todo, it => col.doc(it.id).update({ onList: true, done: false, ...(order.has(it.id) ? { listOrder: order.get(it.id) } : {}) }),
     `${todo.length} vaste item(s) op je lijst gezet.`);
+};
+$("btnClearTasks").onclick = () => {
+  if (!taskCol) return;
+  const done = tasks.filter(t => t.done);
+  if (!done.length) return;
+  ask(`${done.length === 1 ? "1 afgevinkte taak" : done.length + " afgevinkte taken"} verwijderen?`,
+    () => bulk(done, t => taskCol.doc(t.id).delete(), "Opgeruimd."));
 };
 $("btnClear").onclick = () => {
   if (!col) return;
@@ -779,7 +922,10 @@ buyCol = collection("lists_wishlist", r => {
   buys = r.map(b => ({ ...b, price: typeof b.price === "number" && isFinite(b.price) ? b.price : null,
     priority: !!b.priority, bought: !!b.bought, created: b.created || 0 }));
 });
-const tables = [col, chCol, buyCol];
+taskCol = collection("lists_tasks", r => {
+  tasks = r.map(t => ({ ...t, link: LINKS[t.link] ? t.link : null, done: !!t.done, created: t.created || 0 }));
+});
+const tables = [taskCol, col, chCol, buyCol];
 const loadAll = () => tables.forEach(t => t.load());
 
 // Status rechtsboven: groen als de database bereikbaar is én de live verbinding open staat.

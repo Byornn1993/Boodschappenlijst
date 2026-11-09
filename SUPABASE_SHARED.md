@@ -36,6 +36,7 @@ Een gast-app verwijst nooit naar een tabel of functie van een andere app, ook ni
 | `lists_items` | Lijstje en vaste items | collectie `items` |
 | `lists_challenges` | Challenges | collectie `challenges` |
 | `lists_wishlist` | Later kopen | collectie `wishlist` |
+| `lists_tasks` | Taken (eventueel gekoppeld aan een lijst) | nieuw sinds migratie 004 |
 
 ---
 
