@@ -74,35 +74,35 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .theme svg.i { width: 16px; height: 16px; color: var(--accent); }
 .theme:hover { border-color: var(--accent); }
 
-.tabs { display: grid; grid-template-columns: repeat(5, auto); background: var(--card); border: 1px solid var(--card-line);
-  border-radius: var(--r); padding: 4px; gap: 4px; }
-.tabs button { font: 600 .88rem var(--font-body); border: 0; border-radius: var(--r-sm); padding: 10px 4px; background: transparent;
-  color: var(--muted); cursor: pointer; white-space: nowrap; }
+/* Menubalk vast onderaan met icoon, naam en een bolletje met het aantal open items.
+   Telefoon: over de volle breedte. Laptop: zwevend onder de kolom, even breed als de lijsten. */
+.tabs { position: fixed; z-index: 15; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: 1fr 1.25fr .8fr 1fr 1fr; gap: 0;
+  border-top: 1px solid var(--line); background: var(--surface); box-shadow: 0 -6px 20px rgba(0,0,0,.18);
+  padding: 2px max(2px, env(safe-area-inset-right, 0px)) calc(2px + env(safe-area-inset-bottom, 0px)) max(2px, env(safe-area-inset-left, 0px)); }
+.tabs button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 54px;
+  padding: 8px 0 6px; font: 600 10.5px var(--font-body); letter-spacing: -.01em; border: 0; border-radius: var(--r-sm);
+  background: transparent; color: var(--muted); cursor: pointer; white-space: nowrap; }
 .tabs button:hover { background: color-mix(in srgb, var(--champ) 7%, transparent); color: var(--fg); }
-.tabs button[aria-selected="true"] { background: var(--accent-soft); color: var(--fg); box-shadow: inset 0 -2px 0 var(--accent); }
-.tabs button[aria-selected="true"] .count { color: var(--accent); }
-.tabs .count:not(:empty)::before { content: "· "; }
-.tabs svg.i { display: none; }
-/* Telefoon: menubalk vast onderaan met icoon, naam en een bolletje met het aantal open items */
-@media (max-width: 720px) {
-  .tabs { position: fixed; z-index: 15; left: 0; right: 0; bottom: 0; grid-template-columns: 1fr 1.25fr .8fr 1fr 1fr; gap: 0;
-    border: 0; border-top: 1px solid var(--line); border-radius: 0; background: var(--surface); box-shadow: 0 -6px 20px rgba(0,0,0,.18);
-    padding: 2px max(2px, env(safe-area-inset-right, 0px)) calc(2px + env(safe-area-inset-bottom, 0px)) max(2px, env(safe-area-inset-left, 0px)); }
-  .tabs button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 54px;
-    padding: 8px 0 6px; font-size: 10.5px; letter-spacing: -.01em; border-radius: var(--r-sm); }
-  .tabs button .lbl { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-  .tabs svg.i { display: block; width: 22px; height: 22px; }
-  .tabs button[aria-selected="true"] { background: transparent; box-shadow: none; color: var(--fg); }
-  .tabs button[aria-selected="true"] svg.i { color: var(--accent); }
-  .tabs button[aria-selected="true"]::before { content: ""; position: absolute; top: -2px; left: 28%; right: 28%; height: 3px; border-radius: 0 0 3px 3px; background: var(--accent); }
-  .tabs .count { position: absolute; top: 4px; left: calc(50% + 7px); min-width: 17px; height: 17px; box-sizing: border-box; padding: 0 5px;
-    border-radius: 999px; background: var(--accent); color: var(--accent-fg); font: 700 10px/17px var(--font-body); text-align: center; }
-  .tabs button[aria-selected="true"] .count { color: var(--accent-fg); }
-  .tabs .count:empty { display: none; }
-  .tabs .count:not(:empty)::before { content: none; }
-  .wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
-  body .toast { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
-  /* Tijdens het typen weg, zodat de balk niet boven het toetsenbord blijft hangen */
+.tabs button .lbl { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.tabs svg.i { width: 22px; height: 22px; }
+.tabs button[aria-selected="true"] { color: var(--fg); }
+.tabs button[aria-selected="true"] svg.i { color: var(--accent); }
+.tabs button[aria-selected="true"]::before { content: ""; position: absolute; top: -2px; left: 28%; right: 28%; height: 3px; border-radius: 0 0 3px 3px; background: var(--accent); }
+.tabs .count { position: absolute; top: 4px; left: calc(50% + 7px); min-width: 17px; height: 17px; box-sizing: border-box; padding: 0 5px;
+  border-radius: 999px; background: var(--accent); color: var(--accent-fg); font: 700 10px/17px var(--font-body); text-align: center; }
+.tabs .count:empty { display: none; }
+.wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+body .toast { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 721px) {
+  .tabs { left: 50%; right: auto; transform: translateX(-50%); bottom: 16px; width: min(540px, calc(100% - 32px)); box-sizing: border-box;
+    border: 1px solid var(--line); border-radius: var(--r); padding: 4px; box-shadow: 0 10px 28px rgba(0,0,0,.28); }
+  .tabs button { font-size: 12px; min-height: 58px; }
+  .tabs button[aria-selected="true"]::before { top: -4px; }
+  .wrap { padding-bottom: 120px; }
+  body .toast { bottom: 96px; }
+}
+/* Tijdens het typen op een telefoon weg, zodat de balk niet boven het toetsenbord blijft hangen */
+@media (pointer: coarse) {
   body.typing .tabs { display: none; }
   body.typing .toast { bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
 }
