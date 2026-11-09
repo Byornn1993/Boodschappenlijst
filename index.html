@@ -70,7 +70,7 @@ h1 { font: 700 27px/1.15 var(--font-display); margin: 0; letter-spacing: -.025em
 .dot.on { background: var(--pos); opacity: 1; }
 svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 .theme { display: inline-flex; align-items: center; gap: 6px; font: 600 .8rem var(--font-body); color: var(--fg);
-  background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px 6px 10px; cursor: pointer; }
+  background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px 6px 10px; min-height: 40px; cursor: pointer; }
 .theme svg.i { width: 16px; height: 16px; color: var(--accent); }
 .theme:hover { border-color: var(--accent); }
 
@@ -106,15 +106,17 @@ form.add button:hover, .btn:hover { background: color-mix(in srgb, var(--accent)
 .list { list-style: none; margin: 0; padding: 0; background: var(--card); border: 1px solid var(--card-line); border-radius: var(--r); overflow: hidden; }
 .list li { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--line-2); }
 .list li:first-child { border-top: 0; }
-.check { appearance: none; width: 24px; height: 24px; flex: none; border: 2px solid var(--line); border-radius: 7px; cursor: pointer;
+.check { appearance: none; width: 28px; height: 28px; flex: none; border: 2px solid var(--line); border-radius: 8px; cursor: pointer;
   display: grid; place-items: center; margin: 0; background: var(--input); }
 .check:hover { border-color: var(--accent); }
 .check:checked { background: var(--accent); border-color: var(--accent); }
-.check:checked::after { content: ""; width: 6px; height: 11px; border: solid var(--accent-fg); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg) translate(-1px,-1px); }
-.name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.check:checked::after { content: ""; width: 7px; height: 13px; border: solid var(--accent-fg); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg) translate(-1px,-1px); }
+/* Een tik ergens op een regel met een vinkje vinkt af */
+.list li:has(> .check) { cursor: pointer; }
+.name { flex: 1; min-width: 0; overflow-wrap: anywhere; cursor: pointer; }
 li.done .name { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--champ) 45%, transparent); }
-.icon { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 1.15rem; padding: 6px; border-radius: 8px; line-height: 1;
-  display: inline-grid; place-items: center; }
+.icon { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 1.15rem; padding: 0; border-radius: var(--r-sm); line-height: 1;
+  display: inline-grid; place-items: center; min-width: 40px; min-height: 44px; flex: none; }
 .icon:hover { color: var(--fg); background: color-mix(in srgb, var(--champ) 9%, transparent); }
 .icon.star.on { color: var(--accent); }
 /* Verslepen: greepje rechts op elke regel */
@@ -123,7 +125,9 @@ li.done .name { color: var(--muted); text-decoration: line-through; text-decorat
 .list.sorting li { transition: transform .15s ease; }
 .list li.dragging { position: relative; z-index: 2; transition: none; background: var(--surface); box-shadow: 0 10px 28px rgba(0,0,0,.35); }
 body.drag-active, body.drag-active * { cursor: grabbing !important; user-select: none; -webkit-user-select: none; }
-@media (max-width: 420px) { .list li { gap: 8px; padding-inline: 12px; } .list .icon { padding: 5px; } }
+.list li { padding-block: 6px; min-height: 44px; }
+.list li > .icon { margin-inline: -4px; }
+@media (max-width: 420px) { .list li { gap: 8px; padding-inline: 12px; } }
 .tag { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--accent); font-weight: 600;
   background: var(--accent-soft); border-radius: 999px; padding: 2px 8px; }
 .section-label { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; margin: 4px 2px -8px;
@@ -132,7 +136,7 @@ body.drag-active, body.drag-active * { cursor: grabbing !important; user-select:
 .empty { text-align: center; color: var(--muted); padding: 28px 18px; background: var(--card); border: 1px dashed var(--card-line); border-radius: var(--r); }
 .empty strong { display: block; color: var(--fg); font: 600 15.5px var(--font-display); letter-spacing: -.01em; margin-bottom: 4px; }
 .toggle { font: 600 .82rem var(--font-body); border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 999px;
-  padding: 6px 12px; cursor: pointer; white-space: nowrap; }
+  padding: 6px 14px; min-height: 40px; cursor: pointer; white-space: nowrap; }
 .toggle:hover { border-color: var(--accent); color: var(--fg); }
 .toggle.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 /* Meldingen: vaste balk onderaan het scherm, boven de thuisbalk van de iPhone */
@@ -162,7 +166,7 @@ li.done .peek { display: none; }
 .bar span { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
 li.done .bar span { background: var(--pos); }
 .step { font: 600 .9rem var(--font-body); border: 1px solid var(--line); background: transparent; color: var(--fg); border-radius: var(--r-sm);
-  min-width: 40px; min-height: 36px; padding: 4px 8px; cursor: pointer; font-variant-numeric: tabular-nums; }
+  min-width: 44px; min-height: 44px; padding: 4px 8px; cursor: pointer; font-variant-numeric: tabular-nums; }
 .step:hover:not(:disabled) { border-color: var(--accent); }
 .step:disabled { opacity: .4; cursor: default; }
 .step.plus { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
@@ -176,7 +180,7 @@ form.edit { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 8px; ali
 form.edit .btn { min-height: 44px; padding: 0 14px; font-size: .88rem; }
 
 /* Later kopen: prijs rechts uitgelijnd, totaal bovenaan als gouden hoofdtegel */
-.price { font-variant-numeric: tabular-nums; color: var(--champ); font-size: .92rem; white-space: nowrap; }
+.price { font-variant-numeric: tabular-nums; color: var(--champ); font-size: .88rem; white-space: nowrap; }
 li.done .price { color: var(--muted); }
 .total { display: flex; flex-direction: column; gap: 4px; border-radius: var(--r); padding: 16px 18px;
   background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 14%, var(--card)), var(--card));
@@ -391,6 +395,12 @@ function checkbox(id, checked, label, fn) {
 function nameLabel(forId, text) {
   const l = document.createElement("label"); l.className = "name"; l.htmlFor = forId; l.textContent = text; return l;
 }
+// Tik op een lege plek van een regel = tik op het vinkje van die regel
+document.addEventListener("click", e => {
+  const li = e.target.closest(".list li");
+  if (!li || e.target.closest("button, input, select, label, a, form")) return;
+  li.querySelector(":scope > .check")?.click();
+});
 
 // ── Eigen volgorde. Elke lijst bewaart een getal per regel; verslepen geeft de regel een getal tussen zijn nieuwe buren.
 const ord = (a, b, key) => { const x = a[key] ?? Infinity, y = b[key] ?? Infinity; return x === y ? 0 : x < y ? -1 : 1; };
@@ -745,8 +755,11 @@ function buyLi(b, group) {
   const li = document.createElement("li"); if (b.bought) li.className = "done";
   const cb = checkbox("b-" + b.id, b.bought, "Gekocht: " + b.name,
     v => w(() => buyCol.doc(b.id).update({ bought: v, boughtAt: v ? Date.now() : null })));
-  li.append(cb, nameLabel(cb.id, b.name));
-  if (b.price != null) { const p = document.createElement("span"); p.className = "price"; p.textContent = eur.format(b.price); li.append(p); }
+  // Prijs onder de naam, zodat de naam ook op een smal scherm ruimte houdt naast de knoppen
+  const box = document.createElement("div"); box.className = "task";
+  box.append(nameLabel(cb.id, b.name));
+  if (b.price != null) { const p = document.createElement("span"); p.className = "price"; p.textContent = eur.format(b.price); box.append(p); }
+  li.append(cb, box);
   if (!b.bought) {
     const s = btn("star" + (b.priority ? " on" : ""), b.priority ? "★" : "☆", b.priority ? "Voorrang weghalen" : "Voorrang geven",
       () => w(() => buyCol.doc(b.id).update({ priority: !b.priority })));
