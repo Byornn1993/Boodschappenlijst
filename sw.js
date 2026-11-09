@@ -2,7 +2,7 @@
 // De pagina komt eerst van het netwerk (zo zie je updates meteen), zonder bereik uit de cache.
 // Iconen, het Supabase-script en lettertypes komen uit de cache en worden op de achtergrond ververst.
 // De database (supabase.co) gaat nooit via de cache: daarvoor heeft de app een eigen wachtrij.
-const CACHE = "lists-v1";
+const CACHE = "lists-v2";
 const SUPABASE_JS = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js";
 const SHELL = ["./", "manifest.webmanifest", "icon.svg", "apple-touch-icon.png", "pwa-192.png", "pwa-512.png", SUPABASE_JS];
 const INDEX = new URL("./", self.registration.scope).href;
@@ -18,9 +18,10 @@ self.addEventListener("activate", e => {
 });
 
 // Pagina: netwerk, maar na 4 seconden zonder antwoord de bewaarde versie.
+// "no-cache": altijd bij GitHub navragen of er een nieuwe versie is, niet de browsercache van 10 minuten gebruiken.
 async function page(req) {
   const cache = await caches.open(CACHE);
-  const net = fetch(req).then(res => { if (res.ok) cache.put(INDEX, res.clone()); return res; });
+  const net = fetch(req.url, { cache: "no-cache", credentials: "same-origin" }).then(res => { if (res.ok) cache.put(INDEX, res.clone()); return res; });
   net.catch(() => {});
   const late = new Promise(r => setTimeout(r, 4000)).then(() => cache.match(INDEX));
   try {

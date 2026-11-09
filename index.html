@@ -1126,7 +1126,12 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) hidde
 window.addEventListener("pageshow", e => { if (e.persisted) resume(); });
 window.addEventListener("online", () => { reachable = true; resume(); });
 // De app zelf (pagina, iconen, Supabase-script) bewaart een service worker, zodat hij ook zonder bereik opent.
-if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => {});
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+  // Nieuwe versie van de app geïnstalleerd terwijl je hem opende: één keer herladen, dan zie je meteen de nieuwe versie.
+  const hadWorker = !!navigator.serviceWorker.controller; let reloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadWorker && !reloaded) { reloaded = true; location.reload(); } });
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(r => r.update()).catch(() => {});
+}
 window.addEventListener("offline", () => { live = false; reachable = false; showStatus(); });
 
 function onSession(session) {
