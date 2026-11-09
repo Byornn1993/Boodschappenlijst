@@ -74,14 +74,14 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .theme svg.i { width: 16px; height: 16px; color: var(--accent); }
 .theme:hover { border-color: var(--accent); }
 
-.tabs { display: grid; grid-template-columns: repeat(5, 1fr); background: var(--card); border: 1px solid var(--card-line);
+.tabs { display: grid; grid-template-columns: repeat(5, auto); background: var(--card); border: 1px solid var(--card-line);
   border-radius: var(--r); padding: 4px; gap: 4px; }
 .tabs button { font: 600 .88rem var(--font-body); border: 0; border-radius: var(--r-sm); padding: 10px 4px; background: transparent;
-  color: var(--muted); cursor: pointer; }
+  color: var(--muted); cursor: pointer; white-space: nowrap; }
 .tabs button:hover { background: color-mix(in srgb, var(--champ) 7%, transparent); color: var(--fg); }
 .tabs button[aria-selected="true"] { background: var(--accent-soft); color: var(--fg); box-shadow: inset 0 -2px 0 var(--accent); }
 .tabs button[aria-selected="true"] .count { color: var(--accent); }
-/* Smal scherm: Taken over de volle breedte bovenaan, de andere vier eronder in twee kolommen */
+/* Smal scherm: Thuis over de volle breedte bovenaan, de andere vier eronder in twee kolommen */
 @media (max-width: 560px) { .tabs { grid-template-columns: 1fr 1fr; } .tabs button:first-child { grid-column: 1 / -1; } }
 
 form.add { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -133,6 +133,9 @@ body.drag-active, body.drag-active * { cursor: grabbing !important; user-select:
 .section-label { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; margin: 4px 2px -8px;
   display: flex; justify-content: space-between; gap: 8px; }
 .section-label span:last-child:not(:first-child) { font-variant-numeric: tabular-nums; color: var(--fg); }
+/* Kopje boven afgevinkte items, met de opruimknop ernaast */
+.section-label.done-head { align-items: center; margin-bottom: -6px; }
+.done-head .toggle { text-transform: none; letter-spacing: 0; }
 .empty { text-align: center; color: var(--muted); padding: 28px 18px; background: var(--card); border: 1px dashed var(--card-line); border-radius: var(--r); }
 .empty strong { display: block; color: var(--fg); font: 600 15.5px var(--font-display); letter-spacing: -.01em; margin-bottom: 4px; }
 .toggle { font: 600 .82rem var(--font-body); border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 999px;
@@ -210,7 +213,7 @@ body:not(.out) #viewLogin { display: none !important; }
 
 <div class="wrap">
   <header>
-    <h1 id="title">Taken</h1>
+    <h1 id="title">Thuis</h1>
     <div class="meta">
       <span class="sync"><span class="dot" id="dot"></span><span id="syncText">Verbinden…</span></span>
       <button class="theme" id="btnTheme" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg><span id="themeLbl">Thema: donker</span></button>
@@ -218,8 +221,8 @@ body:not(.out) #viewLogin { display: none !important; }
   </header>
 
   <div class="tabs" role="tablist">
-    <button role="tab" id="tabTask" aria-selected="true">Taken <span class="count" id="cntTask"></span></button>
-    <button role="tab" id="tabList" aria-selected="false">Lijstje <span class="count" id="cntList"></span></button>
+    <button role="tab" id="tabTask" aria-selected="true">Thuis <span class="count" id="cntTask"></span></button>
+    <button role="tab" id="tabList" aria-selected="false">Boodschappen <span class="count" id="cntList"></span></button>
     <button role="tab" id="tabStd" aria-selected="false">Vast <span class="count" id="cntStd"></span></button>
     <button role="tab" id="tabCh" aria-selected="false">Challenges <span class="count" id="cntCh"></span></button>
     <button role="tab" id="tabBuy" aria-selected="false">Later kopen <span class="count" id="cntBuy"></span></button>
@@ -230,22 +233,19 @@ body:not(.out) #viewLogin { display: none !important; }
   <section id="viewTask">
     <div style="display:flex;flex-direction:column;gap:16px">
       <form class="add" id="addTask">
-        <input id="inTask" placeholder="Nieuwe taak, bv. winkelen" autocomplete="off" enterkeyhint="done">
+        <input id="inTask" placeholder="Nieuwe taak, bv. was ophangen" autocomplete="off" enterkeyhint="done">
         <select id="inTaskLink" aria-label="Koppelen aan een lijst (optioneel)">
           <option value="">Geen lijst</option>
-          <option value="list">Lijstje</option>
+          <option value="list">Boodschappen</option>
           <option value="buy">Later kopen</option>
           <option value="ch">Challenges</option>
         </select>
         <button type="submit">Voeg toe</button>
       </form>
       <ul class="list" id="ulTaskOpen"></ul>
-      <div class="empty" id="emptyTask" hidden><strong>Geen taken</strong>Zet hier wat je moet doen. Koppel een taak aan een lijst, bv. winkelen aan Lijstje, en je ziet meteen welke items je nodig hebt.</div>
-      <div class="section-label" id="lblTaskDone" hidden><span>Klaar</span></div>
+      <div class="empty" id="emptyTask" hidden><strong>Niets te doen in huis</strong>Zet hier wat er thuis moet gebeuren. Koppel een taak aan een lijst, bv. winkelen aan Boodschappen, en je ziet meteen wat je nodig hebt.</div>
+      <div class="section-label done-head" id="lblTaskDone" hidden><span id="lblTaskDoneText">Klaar</span><button class="toggle" id="btnClearTasks" type="button">Opruimen</button></div>
       <ul class="list" id="ulTaskDone" hidden></ul>
-      <div class="actions" id="taskActions" hidden>
-        <button class="btn ghost" id="btnClearTasks">Klaar opruimen</button>
-      </div>
     </div>
   </section>
 
@@ -256,10 +256,11 @@ body:not(.out) #viewLogin { display: none !important; }
         <button type="submit">Voeg toe</button>
       </form>
       <ul class="list" id="ulList"></ul>
-      <div class="empty" id="emptyList" hidden><strong>Je lijstje is leeg</strong>Typ hierboven iets, of zet je vaste items in één keer op de lijst.</div>
+      <div class="empty" id="emptyList" hidden><strong>Je boodschappenlijst is leeg</strong>Typ hierboven iets, of zet je vaste items in één keer op de lijst.</div>
+      <div class="section-label done-head" id="lblListDone" hidden><span id="lblListDoneText">In mandje</span><button class="toggle" id="btnClear" type="button">Opruimen</button></div>
+      <ul class="list" id="ulListDone" hidden></ul>
       <div class="actions">
         <button class="btn ghost" id="btnFill">Vaste items op lijst</button>
-        <button class="btn ghost" id="btnClear">Afgevinkte opruimen</button>
       </div>
     </div>
   </section>
@@ -271,7 +272,7 @@ body:not(.out) #viewLogin { display: none !important; }
         <button type="submit">Voeg toe</button>
       </form>
       <ul class="list" id="ulStd"></ul>
-      <div class="empty" id="emptyStd" hidden><strong>Nog geen vaste items</strong>Dingen die je elke week koopt zet je hier. Met één knop staan ze dan op je lijstje.</div>
+      <div class="empty" id="emptyStd" hidden><strong>Nog geen vaste items</strong>Dingen die je elke week koopt zet je hier. Met één knop staan ze dan op je boodschappenlijst.</div>
     </div>
   </section>
 
@@ -343,7 +344,7 @@ function errText(e) {
 }
 async function w(fn) { try { await fn(); } catch (e) { say(errText(e)); } }
 
-const VIEWS = { task: ["tabTask", "viewTask", "Taken"], list: ["tabList", "viewList", "Boodschappen"], std: ["tabStd", "viewStd", "Boodschappen"],
+const VIEWS = { task: ["tabTask", "viewTask", "Thuis"], list: ["tabList", "viewList", "Boodschappen"], std: ["tabStd", "viewStd", "Vaste items"],
                 ch: ["tabCh", "viewCh", "Challenges"], buy: ["tabBuy", "viewBuy", "Later kopen"] };
 function setView(v) {
   if (!VIEWS[v]) v = "task";
@@ -492,7 +493,8 @@ function renderShopping() {
   $("cntList").textContent = onList.length ? `· ${open}` : "";
   $("cntStd").textContent = std.length ? `· ${std.length}` : "";
 
-  const ul = $("ulList"); ul.replaceChildren();
+  // Open items bovenaan, afgevinkte apart onder "In mandje"
+  const ul = $("ulList"), ud = $("ulListDone"); ul.replaceChildren(); ud.replaceChildren();
   for (const it of onList) {
     const li = document.createElement("li"); if (it.done) li.className = "done";
     const cb = checkbox("c-" + it.id, it.done, "Afvinken: " + it.name, v => w(() => col.doc(it.id).update({ done: v })));
@@ -501,9 +503,11 @@ function renderShopping() {
     li.append(btn("", "✕", "Van lijst halen", () => removeWithUndo(col, [it], offList, `${it.name} van de lijst gehaald.`)));
     li.dataset.group = it.done ? "done" : "open";
     li.append(grip(li, it.done ? doneGroup : openGroup, it, "listOrder", col));
-    ul.append(li);
+    (it.done ? ud : ul).append(li);
   }
-  ul.hidden = !onList.length; $("emptyList").hidden = !!onList.length || !loaded;
+  ul.hidden = !openGroup.length; $("emptyList").hidden = !!onList.length || !loaded;
+  ud.hidden = $("lblListDone").hidden = !doneGroup.length;
+  $("lblListDoneText").textContent = `In mandje · ${doneGroup.length}`;
 
   const us = $("ulStd"); us.replaceChildren();
   for (const it of std) {
@@ -522,8 +526,8 @@ function renderShopping() {
 }
 
 // ── Taken. Een gekoppelde taak toont wat er op die lijst nog open staat.
-const LINKS = { list: "Lijstje", buy: "Later kopen", ch: "Challenges" };
-// Typ je "winkelen" of "boodschappen" zonder lijst te kiezen, dan wordt de taak aan Lijstje gekoppeld.
+const LINKS = { list: "Boodschappen", buy: "Later kopen", ch: "Challenges" };
+// Typ je "winkelen" of "boodschappen" zonder lijst te kiezen, dan wordt de taak aan Boodschappen gekoppeld.
 const guessLink = name => /winkel|boodschap|supermarkt/i.test(name) ? "list" : null;
 
 function linkInfo(link) {
@@ -605,7 +609,8 @@ function renderTasks(force) {
   $("ulTaskOpen").replaceChildren(...open.map(t => taskLi(t, open)));
   $("ulTaskDone").replaceChildren(...done.map(t => taskLi(t, done)));
   $("ulTaskOpen").hidden = !open.length; $("emptyTask").hidden = !!tasks.length || !loaded;
-  $("ulTaskDone").hidden = $("lblTaskDone").hidden = $("taskActions").hidden = !done.length;
+  $("ulTaskDone").hidden = $("lblTaskDone").hidden = !done.length;
+  $("lblTaskDoneText").textContent = `Klaar · ${done.length}`;
 }
 
 let editCh = null; // concept van de challenge die je nu aanpast: { id, name, goal, count }
