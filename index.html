@@ -81,8 +81,31 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .tabs button:hover { background: color-mix(in srgb, var(--champ) 7%, transparent); color: var(--fg); }
 .tabs button[aria-selected="true"] { background: var(--accent-soft); color: var(--fg); box-shadow: inset 0 -2px 0 var(--accent); }
 .tabs button[aria-selected="true"] .count { color: var(--accent); }
-/* Smal scherm: Thuis over de volle breedte bovenaan, de andere vier eronder in twee kolommen */
-@media (max-width: 560px) { .tabs { grid-template-columns: 1fr 1fr; } .tabs button:first-child { grid-column: 1 / -1; } }
+.tabs .count:not(:empty)::before { content: "· "; }
+.tabs svg.i { display: none; }
+/* Telefoon: menubalk vast onderaan met icoon, naam en een bolletje met het aantal open items */
+@media (max-width: 720px) {
+  .tabs { position: fixed; z-index: 15; left: 0; right: 0; bottom: 0; grid-template-columns: 1fr 1.25fr .8fr 1fr 1fr; gap: 0;
+    border: 0; border-top: 1px solid var(--line); border-radius: 0; background: var(--surface); box-shadow: 0 -6px 20px rgba(0,0,0,.18);
+    padding: 2px max(2px, env(safe-area-inset-right, 0px)) calc(2px + env(safe-area-inset-bottom, 0px)) max(2px, env(safe-area-inset-left, 0px)); }
+  .tabs button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 54px;
+    padding: 8px 0 6px; font-size: 10.5px; letter-spacing: -.01em; border-radius: var(--r-sm); }
+  .tabs button .lbl { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .tabs svg.i { display: block; width: 22px; height: 22px; }
+  .tabs button[aria-selected="true"] { background: transparent; box-shadow: none; color: var(--fg); }
+  .tabs button[aria-selected="true"] svg.i { color: var(--accent); }
+  .tabs button[aria-selected="true"]::before { content: ""; position: absolute; top: -2px; left: 28%; right: 28%; height: 3px; border-radius: 0 0 3px 3px; background: var(--accent); }
+  .tabs .count { position: absolute; top: 4px; left: calc(50% + 7px); min-width: 17px; height: 17px; box-sizing: border-box; padding: 0 5px;
+    border-radius: 999px; background: var(--accent); color: var(--accent-fg); font: 700 10px/17px var(--font-body); text-align: center; }
+  .tabs button[aria-selected="true"] .count { color: var(--accent-fg); }
+  .tabs .count:empty { display: none; }
+  .tabs .count:not(:empty)::before { content: none; }
+  .wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+  body .toast { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+  /* Tijdens het typen weg, zodat de balk niet boven het toetsenbord blijft hangen */
+  body.typing .tabs { display: none; }
+  body.typing .toast { bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+}
 
 form.add { display: flex; gap: 8px; flex-wrap: wrap; }
 form.add input { flex: 1 1 160px; min-width: 0; height: 46px; box-sizing: border-box; font: 16px var(--font-body); padding: 0 14px;
@@ -150,6 +173,16 @@ body.drag-active, body.drag-active * { cursor: grabbing !important; user-select:
 .toast button { font: 600 .9rem var(--font-body); color: var(--accent); background: transparent; border: 1px solid var(--line);
   border-radius: var(--r-sm); min-height: 40px; padding: 0 12px; margin-right: -6px; cursor: pointer; white-space: nowrap; }
 .toast button:hover { border-color: var(--accent); }
+
+/* Suggesties onder het invoerveld: eerder gebruikte boodschappen als knopjes */
+.sugg { display: flex; flex-wrap: wrap; gap: 8px; margin-top: -6px; }
+.sugg .chip { display: inline-flex; align-items: center; max-width: 100%; border: 1px solid var(--card-line); border-radius: 999px; background: var(--card); }
+.sugg .chip > button:first-child { font: 500 .92rem var(--font-body); color: var(--fg); background: transparent; border: 0; border-radius: 999px;
+  min-height: 40px; padding: 0 14px; cursor: pointer; overflow-wrap: anywhere; text-align: left; }
+.sugg .chip > button:first-child::before { content: "+ "; color: var(--accent); font-weight: 700; }
+.sugg .chip:hover { border-color: var(--accent); }
+.sugg .chip .icon { min-height: 40px; min-width: 36px; margin-left: -8px; }
+.sugg .chip .icon svg.i { width: 15px; height: 15px; }
 
 /* Taken: gekoppelde lijst eronder als knop, tik = naar die lijst */
 .task { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -221,11 +254,11 @@ body:not(.out) #viewLogin { display: none !important; }
   </header>
 
   <div class="tabs" role="tablist">
-    <button role="tab" id="tabTask" aria-selected="true">Thuis <span class="count" id="cntTask"></span></button>
-    <button role="tab" id="tabList" aria-selected="false">Boodschappen <span class="count" id="cntList"></span></button>
-    <button role="tab" id="tabStd" aria-selected="false">Vast <span class="count" id="cntStd"></span></button>
-    <button role="tab" id="tabCh" aria-selected="false">Challenges <span class="count" id="cntCh"></span></button>
-    <button role="tab" id="tabBuy" aria-selected="false">Later kopen <span class="count" id="cntBuy"></span></button>
+    <button role="tab" id="tabTask" aria-selected="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9v12h14V9"/><path d="M10 21v-6h4v6"/></svg><span class="lbl">Thuis</span> <span class="count" id="cntTask"></span></button>
+    <button role="tab" id="tabList" aria-selected="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 3h3l2.6 12.4a1.5 1.5 0 0 0 1.5 1.1h8.6a1.5 1.5 0 0 0 1.5-1.2L21.5 8H6.2"/></svg><span class="lbl">Boodschappen</span> <span class="count" id="cntList"></span></button>
+    <button role="tab" id="tabStd" aria-selected="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg><span class="lbl">Vast</span> <span class="count" id="cntStd"></span></button>
+    <button role="tab" id="tabCh" aria-selected="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg><span class="lbl">Challenges</span> <span class="count" id="cntCh"></span></button>
+    <button role="tab" id="tabBuy" aria-selected="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg><span class="lbl">Later kopen</span> <span class="count" id="cntBuy"></span></button>
   </div>
 
   <div class="empty" id="loading" role="status"><strong id="loadingText">Laden…</strong></div>
@@ -255,6 +288,7 @@ body:not(.out) #viewLogin { display: none !important; }
         <input id="inList" placeholder="Iets toevoegen, bv. bananen" autocomplete="off" enterkeyhint="done">
         <button type="submit">Voeg toe</button>
       </form>
+      <div class="sugg" id="suggList" aria-label="Eerder gebruikt" hidden></div>
       <ul class="list" id="ulList"></ul>
       <div class="empty" id="emptyList" hidden><strong>Je boodschappenlijst is leeg</strong>Typ hierboven iets, of zet je vaste items in één keer op de lijst.</div>
       <div class="section-label done-head" id="lblListDone" hidden><span id="lblListDoneText">In mandje</span><button class="toggle" id="btnClear" type="button">Opruimen</button></div>
@@ -271,6 +305,7 @@ body:not(.out) #viewLogin { display: none !important; }
         <input id="inStd" placeholder="Nieuw vast item, bv. melk" autocomplete="off" enterkeyhint="done">
         <button type="submit">Voeg toe</button>
       </form>
+      <div class="sugg" id="suggStd" aria-label="Eerder gebruikt" hidden></div>
       <ul class="list" id="ulStd"></ul>
       <div class="empty" id="emptyStd" hidden><strong>Nog geen vaste items</strong>Dingen die je elke week koopt zet je hier. Met één knop staan ze dan op je boodschappenlijst.</div>
     </div>
@@ -340,7 +375,7 @@ function say(t, undo) {
 function errText(e) {
   if (e && e.code === "23505") return "Deze naam bestaat al.";
   if (e && (e.status === 401 || e.code === "PGRST301" || e.code === "PGRST303")) return "Je bent uitgelogd. Log opnieuw in.";
-  return "Opslaan lukte niet. Controleer je verbinding en probeer opnieuw.";
+  return "Opslaan lukte niet. Probeer het opnieuw.";
 }
 async function w(fn) { try { await fn(); } catch (e) { say(errText(e)); } }
 
@@ -353,7 +388,10 @@ function setView(v) {
   $("title").textContent = VIEWS[v][2];
   try { localStorage.setItem("lists-tab", v); } catch (e) {}
 }
-for (const [k, [tab]] of Object.entries(VIEWS)) $(tab).onclick = () => setView(k);
+for (const [k, [tab]] of Object.entries(VIEWS)) $(tab).onclick = () => { if (view !== k) { setView(k); scrollTo(0, 0); } };
+// Telefoon: de menubalk verdwijnt zolang je typt
+const typing = e => document.body.classList.toggle("typing", e.type === "focusin" && e.target.matches("input:not([type=checkbox])"));
+document.addEventListener("focusin", typing); document.addEventListener("focusout", typing);
 let savedTab = null;
 try { savedTab = localStorage.getItem("lists-tab"); } catch (e) {}
 setView(savedTab || "task");
@@ -446,6 +484,7 @@ function dragStart(e, li, drop) {
   const y0 = e.clientY, sy0 = scrollY;
   const minDy = rects[0].top - rects[idx].top, maxDy = rects[rects.length - 1].bottom - rects[idx].bottom;
   let to = idx;
+  const bar = document.querySelector(".tabs"), barH = getComputedStyle(bar).position === "fixed" ? bar.offsetHeight : 0;
   dragging = true; ul.classList.add("sorting"); li.classList.add("dragging"); document.body.classList.add("drag-active");
   const move = ev => {
     if (ev.pointerId !== e.pointerId) return;
@@ -460,7 +499,7 @@ function dragStart(e, li, drop) {
       const shift = idx < to && i > idx && i <= to ? -h : to < idx && i >= to && i < idx ? h : 0;
       s.style.transform = shift ? `translateY(${shift}px)` : "";
     });
-    if (ev.clientY < 70) scrollBy(0, -10); else if (ev.clientY > innerHeight - 70) scrollBy(0, 10);
+    if (ev.clientY < 70) scrollBy(0, -10); else if (ev.clientY > innerHeight - 70 - barH) scrollBy(0, 10);
   };
   const end = ev => {
     if (ev.pointerId !== e.pointerId) return;
@@ -490,8 +529,8 @@ function renderShopping() {
   const std = items.filter(i => i.standard).sort((a, b) => ord(a, b, "stdOrder") || a.name.localeCompare(b.name, "nl"));
   const openGroup = onList.filter(i => !i.done), doneGroup = onList.filter(i => i.done);
   const open = onList.filter(i => !i.done).length;
-  $("cntList").textContent = onList.length ? `· ${open}` : "";
-  $("cntStd").textContent = std.length ? `· ${std.length}` : "";
+  $("cntList").textContent = open || "";
+  $("cntStd").textContent = std.length || "";
 
   // Open items bovenaan, afgevinkte apart onder "In mandje"
   const ul = $("ulList"), ud = $("ulListDone"); ul.replaceChildren(); ud.replaceChildren();
@@ -602,7 +641,7 @@ function taskLi(t, group) {
 function renderTasks(force) {
   const open = tasks.filter(t => !t.done).sort((a, b) => ord(a, b, "sortOrder") || a.created - b.created);
   const done = tasks.filter(t => t.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
-  $("cntTask").textContent = tasks.length ? `· ${open.length}` : "";
+  $("cntTask").textContent = open.length || "";
   if (editTask && !open.some(t => t.id === editTask.id)) editTask = null;
   // Tijdens het aanpassen niet opnieuw tekenen bij een sync, anders verlies je de focus in het invoerveld
   if (editTask && !force && $("et-name")) return;
@@ -699,7 +738,7 @@ function chLi(c, group) {
 function renderChallenges(force) {
   const open = challenges.filter(c => !c.done).sort((a, b) => ord(a, b, "sortOrder") || a.created - b.created);
   const done = challenges.filter(c => c.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
-  $("cntCh").textContent = challenges.length ? `· ${open.length}` : "";
+  $("cntCh").textContent = open.length || "";
   if (editCh && !open.some(c => c.id === editCh.id)) editCh = null;
   // Tijdens het aanpassen niet opnieuw tekenen bij een sync, anders verlies je de focus in het invoerveld
   if (editCh && !force && $("ed-name")) return;
@@ -782,7 +821,7 @@ function renderBuys(force) {
   const open = buys.filter(b => !b.bought).sort((a, b) => ord(a, b, "sortOrder") || (b.priority - a.priority) || a.created - b.created);
   const done = buys.filter(b => b.bought).sort((a, b) => (b.boughtAt || 0) - (a.boughtAt || 0));
   const sum = list => list.reduce((s, b) => s + (b.price || 0), 0);
-  $("cntBuy").textContent = buys.length ? `· ${open.length}` : "";
+  $("cntBuy").textContent = open.length || "";
   if (editBuy && !buys.some(b => b.id === editBuy.id)) editBuy = null;
   // Tijdens het aanpassen niet opnieuw tekenen bij een sync, anders verlies je de focus in het invoerveld
   if (editBuy && !force && $("eb-name")) return;
@@ -800,22 +839,62 @@ function renderBuys(force) {
 
 function exists(name) { return items.find(i => i.name.toLowerCase() === name.toLowerCase()); }
 
-$("addList").onsubmit = async e => {
+function addToList(name) {
+  const ex = exists(name), listOrder = nextOrder(items.filter(i => i.onList), "listOrder");
+  return w(() => ex ? col.doc(ex.id).update({ onList: true, done: false, ...(ex.onList && !ex.done ? {} : { listOrder }) })
+                    : col.add({ name, standard: false, onList: true, done: false, listOrder, created: Date.now() }));
+}
+function addToStd(name) {
+  const ex = exists(name), stdOrder = nextOrder(items.filter(i => i.standard), "stdOrder");
+  return w(() => ex ? col.doc(ex.id).update({ standard: true, ...(ex.standard ? {} : { stdOrder }) })
+                    : col.add({ name, standard: true, onList: false, done: false, stdOrder, created: Date.now() }));
+}
+$("addList").onsubmit = e => {
   e.preventDefault(); if (!col) return;
   const name = $("inList").value.trim(); if (!name) return;
-  $("inList").value = "";
-  const ex = exists(name), listOrder = nextOrder(items.filter(i => i.onList), "listOrder");
-  await w(() => ex ? col.doc(ex.id).update({ onList: true, done: false, ...(ex.onList ? {} : { listOrder }) })
-                   : col.add({ name, standard: false, onList: true, done: false, listOrder, created: Date.now() }));
+  $("inList").value = ""; drawSuggList(); addToList(name);
 };
-$("addStd").onsubmit = async e => {
+$("addStd").onsubmit = e => {
   e.preventDefault(); if (!col) return;
   const name = $("inStd").value.trim(); if (!name) return;
-  $("inStd").value = "";
-  const ex = exists(name), stdOrder = nextOrder(items.filter(i => i.standard), "stdOrder");
-  await w(() => ex ? col.doc(ex.id).update({ standard: true, ...(ex.standard ? {} : { stdOrder }) })
-                   : col.add({ name, standard: true, onList: false, done: false, stdOrder, created: Date.now() }));
+  $("inStd").value = ""; drawSuggStd(); addToStd(name);
 };
+
+// ── Suggesties terwijl je typt: alles wat je eerder op de lijst had. Een tik zet het er meteen op.
+// Met het kruisje vergeet de app een suggestie (bv. een tikfout). Vaste items blijven altijd staan.
+function suggestions(text, skip) {
+  const q = text.trim().toLocaleLowerCase("nl"); if (!q) return [];
+  const low = i => i.name.toLocaleLowerCase("nl");
+  return items.filter(i => !skip(i) && low(i).includes(q))
+    .sort((a, b) => (low(b).startsWith(q) - low(a).startsWith(q)) || a.name.localeCompare(b.name, "nl")).slice(0, 6);
+}
+function suggest(inputId, boxId, skip, pick) {
+  const input = $(inputId), box = $(boxId);
+  // Niet laten wegspringen van het invoerveld, zodat het toetsenbord open blijft
+  const hold = b => { b.onpointerdown = b.onmousedown = e => e.preventDefault(); return b; };
+  const draw = () => {
+    const list = suggestions(input.value, skip);
+    box.replaceChildren(...list.map(it => {
+      const chip = document.createElement("span"); chip.className = "chip";
+      const add = hold(document.createElement("button")); add.type = "button"; add.textContent = it.name;
+      add.setAttribute("aria-label", "Toevoegen: " + it.name);
+      add.onclick = () => { input.value = ""; draw(); input.focus(); pick(it.name); };
+      chip.append(add);
+      if (!it.standard && !it.onList) {
+        const x = hold(btn("x", "✕", "Suggestie vergeten: " + it.name, () => { removeWithUndo(col, [it], null, `${it.name} vergeten.`); draw(); }));
+        x.type = "button"; chip.append(x);
+      }
+      return chip;
+    }));
+    box.hidden = !list.length;
+  };
+  input.addEventListener("input", draw);
+  input.addEventListener("focus", draw);
+  input.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== input) box.hidden = true; }, 150));
+  return draw;
+}
+const drawSuggList = suggest("inList", "suggList", i => i.onList && !i.done, addToList);
+const drawSuggStd = suggest("inStd", "suggStd", i => i.standard, addToStd);
 $("addTask").onsubmit = async e => {
   e.preventDefault(); if (!taskCol) return;
   const name = $("inTask").value.trim(); if (!name) return;
@@ -853,8 +932,8 @@ function removeWithUndo(store, list, patchFor, doneMsg) {
   bulk(steps, s => s.patch ? store.doc(s.row.id).update(s.patch) : store.doc(s.row.id).delete(), doneMsg,
     () => bulk(steps, s => s.patch ? store.doc(s.row.id).update(back(s)) : store.restore(s.row.id), "Teruggezet."));
 }
-// Van de boodschappenlijst halen: een vast item blijft bewaard bij Vast, een los item wordt verwijderd.
-const offList = it => it.standard ? { onList: false, done: false } : null;
+// Van de boodschappenlijst halen: het item blijft bewaard, als vast item of als suggestie voor de volgende keer.
+const offList = () => ({ onList: false, done: false });
 $("btnFill").onclick = () => {
   if (!col) return;
   const todo = items.filter(i => i.standard && (!i.onList || i.done));
@@ -907,45 +986,85 @@ function fromRow(row) {
   return data;
 }
 
-// Eén tabel. Een wijziging is meteen zichtbaar, daarna gaat ze naar de database en wordt de tabel opnieuw opgehaald.
-// Zolang er nog iets verstuurd wordt, wordt ophalen uitgesteld, zodat een snelle tik niet wordt teruggedraaid.
+// ── Werkt ook zonder bereik. Elke wijziging komt eerst in een wachtrij op dit toestel en is meteen zichtbaar.
+// De wachtrij gaat op volgorde naar de database; zonder bereik blijft hij bewaard (ook als je de app sluit)
+// tot er weer verbinding is. De laatst opgehaalde lijsten staan ook op het toestel, zodat de app offline opent.
+let userId = null, queue = [], flushing = false, retryTimer = null;
+const keep = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+};
+const saveQueue = () => { if (userId) keep.set("lists-queue-" + userId, queue); };
+const saveCache = () => { if (userId) keep.set("lists-cache-" + userId, Object.fromEntries(tables.map(t => [t.table, t.base]))); };
+
+function applyOp(rows, op) {
+  if (op.kind === "insert") return rows.some(r => r.id === op.id) ? rows.map(r => r.id === op.id ? { ...r, ...op.data } : r) : [...rows, { id: op.id, ...op.data }];
+  if (op.kind === "update") return rows.map(r => r.id === op.id ? { ...r, ...op.data } : r);
+  return rows.filter(r => r.id !== op.id);
+}
+// Toevoegen als upsert: komt een poging dubbel aan (bv. verbinding viel weg na het opslaan), dan geeft dat geen fout.
+function sendOp(op) {
+  const q = sb.from(op.table);
+  return op.kind === "insert" ? q.upsert({ id: op.id, ...toRow(op.data) })
+    : op.kind === "update" ? q.update(toRow(op.data)).eq("id", op.id) : q.delete().eq("id", op.id);
+}
+// Geen bereik, server even weg of sessie verlopen: later opnieuw. Andere fouten (bv. dubbele naam): wijziging vervalt.
+const retryable = res => !navigator.onLine || !res.status || [401, 408, 429].includes(res.status) || res.status >= 500;
+
+async function flush() {
+  if (flushing || !userId || !sb) return;
+  flushing = true; clearTimeout(retryTimer); showStatus();
+  const uid = userId;
+  try {
+    while (queue.length && uid === userId) {
+      const op = queue[0], t = tables.find(x => x.table === op.table);
+      let res; try { res = await sendOp(op); } catch (e) { res = { status: 0, error: e }; }
+      if (uid !== userId) break;
+      if (!res.error) { reachable = true; queue.shift(); saveQueue(); t.confirm(op); continue; }
+      if (retryable(res)) { reachable = false; retryTimer = setTimeout(flush, 15000); break; }
+      queue.shift(); saveQueue(); say(errText(res.error)); t.drop();
+    }
+  } finally { flushing = false; showStatus(); }
+}
+
+// Eén tabel: wat de database laatst gaf (base) met de wachtende wijzigingen erbovenop.
 function collection(table, apply) {
-  let rows = [], writing = 0, timer = null, loadId = 0, ready = false;
+  let base = [], timer = null, loadId = 0, ready = false;
   const trash = new Map(); // verwijderde regels, voor "Ongedaan maken"
-  const show = () => { apply(rows.filter(r => typeof r.name === "string")); render(); };
+  const rows = () => queue.filter(op => op.table === table).reduce(applyOp, base);
+  const show = () => { apply(rows().filter(r => typeof r.name === "string")); render(); };
   const load = async () => {
-    if (writing) return;
+    if (!userId) return;
     const id = ++loadId;
-    const { data, error } = await sb.from(table).select("*");
-    if (id !== loadId || writing) return;
-    if (error) { reachable = false; showStatus(); return; }
+    let res; try { res = await sb.from(table).select("*"); } catch (e) { res = { error: e }; }
+    if (id !== loadId) return;
+    if (res.error) { reachable = false; showStatus(); return; }
     reachable = true; showStatus();
-    rows = data.map(fromRow); ready = true; show();
+    base = res.data.map(fromRow); ready = true; saveCache(); show();
   };
   const refresh = () => { clearTimeout(timer); timer = setTimeout(load, 200); };
-  const write = async (change, send) => {
-    rows = change(rows); show(); writing++;
-    try { const { error } = await send(); if (error) throw error; }
-    finally { writing--; refresh(); }
-  };
+  const write = op => { queue.push({ table, ...op }); saveQueue(); show(); flush(); return Promise.resolve(); };
   return {
-    table, refresh, load,
+    table, refresh, load, show,
     get ready() { return ready; },
-    clear() { loadId++; clearTimeout(timer); rows = []; ready = false; show(); },
-    add(data) {
-      const id = crypto.randomUUID();
-      return write(r => [...r, { id, ...data }], () => sb.from(table).insert({ id, ...toRow(data) }));
-    },
+    get base() { return base; },
+    seed(cached) { if (Array.isArray(cached)) { base = cached; ready = true; } },
+    clear() { loadId++; clearTimeout(timer); base = []; ready = false; show(); },
+    // Opgeslagen: zelf bijwerken en een ophaalactie die nog onderweg was negeren, die kan van vóór de wijziging zijn.
+    confirm(op) { base = applyOp(base, op); loadId++; refresh(); },
+    drop() { loadId++; show(); refresh(); },
+    add(data) { return write({ kind: "insert", id: crypto.randomUUID(), data }); },
     doc: id => ({
-      update: patch => write(r => r.map(x => x.id === id ? { ...x, ...patch } : x), () => sb.from(table).update(toRow(patch)).eq("id", id)),
+      update: patch => write({ kind: "update", id, data: patch }),
       delete: () => {
-        const row = rows.find(x => x.id === id); if (row) trash.set(id, row);
-        return write(r => r.filter(x => x.id !== id), () => sb.from(table).delete().eq("id", id));
+        const row = rows().find(x => x.id === id); if (row) trash.set(id, row);
+        return write({ kind: "delete", id });
       },
     }),
     restore(id) {
       const row = trash.get(id); if (!row) return; trash.delete(id);
-      return write(r => [...r, row], () => sb.from(table).insert(toRow(row)));
+      const { id: _, ...data } = row;
+      return write({ kind: "insert", id, data });
     },
   };
 }
@@ -969,13 +1088,15 @@ taskCol = collection("lists_tasks", r => {
 const tables = [taskCol, col, chCol, buyCol];
 const loadAll = () => tables.forEach(t => t.load());
 
-// Status rechtsboven: groen als de database bereikbaar is én de live verbinding open staat.
-let userId = null, channel = null, channelNr = 0, live = false, reachable = true, hiddenAt = 0;
+// Status rechtsboven: groen als de database bereikbaar is, de live verbinding open staat en niets meer wacht.
+let channel = null, channelNr = 0, live = false, reachable = true, hiddenAt = 0;
 function showStatus() {
-  const ok = live && reachable;
+  const offline = !reachable || !navigator.onLine, n = queue.length;
+  const ok = live && !offline && !n;
   $("dot").className = ok ? "dot on" : "dot";
-  $("syncText").textContent = ok ? "Gesynchroniseerd" : !reachable || !navigator.onLine ? "Verbinding verbroken" : "Verbinden…";
-  $("loadingText").textContent = !reachable || !navigator.onLine ? "Geen verbinding. Je lijsten verschijnen zodra er bereik is." : "Laden…";
+  $("syncText").textContent = n ? (offline ? `Offline · ${n} ${n === 1 ? "wijziging wacht" : "wijzigingen wachten"}` : "Opslaan…")
+    : ok ? "Gesynchroniseerd" : offline ? "Offline" : "Verbinden…";
+  $("loadingText").textContent = offline ? "Geen verbinding. Je lijsten verschijnen zodra er bereik is." : "Laden…";
 }
 
 function disconnect() {
@@ -990,7 +1111,7 @@ function connect() {
   ch.subscribe(state => {
     if (ch !== channel) return;
     live = state === "SUBSCRIBED";
-    if (live) loadAll(); else if (state !== "CLOSED") reachable = navigator.onLine;
+    if (live) { loadAll(); flush(); } else if (state !== "CLOSED") reachable = navigator.onLine;
     showStatus();
   });
 }
@@ -999,21 +1120,29 @@ function connect() {
 function resume() {
   if (!userId) return;
   if (!live || Date.now() - hiddenAt > 30000 && hiddenAt) connect(); else loadAll();
-  hiddenAt = 0;
+  hiddenAt = 0; flush();
 }
 document.addEventListener("visibilitychange", () => { if (document.hidden) hiddenAt = Date.now(); else resume(); });
 window.addEventListener("pageshow", e => { if (e.persisted) resume(); });
 window.addEventListener("online", () => { reachable = true; resume(); });
+// De app zelf (pagina, iconen, Supabase-script) bewaart een service worker, zodat hij ook zonder bereik opent.
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => {});
 window.addEventListener("offline", () => { live = false; reachable = false; showStatus(); });
 
 function onSession(session) {
   const id = session?.user?.id ?? null;
   document.body.classList.remove("boot");
   document.body.classList.toggle("out", !id);
-  if (id === userId) { if (id) loadAll(); return; }
-  userId = id;
-  if (id) { reachable = true; connect(); }
-  else { disconnect(); tables.forEach(t => t.clear()); }
+  if (id === userId) { if (id) { loadAll(); flush(); } return; }
+  userId = id; clearTimeout(retryTimer);
+  // Eerst wat er op dit toestel staat tonen (laatste lijsten + wachtende wijzigingen), daarna verbinden.
+  queue = id ? keep.get("lists-queue-" + id) || [] : [];
+  tables.forEach(t => t.clear());
+  if (id) {
+    const cache = keep.get("lists-cache-" + id) || {};
+    tables.forEach(t => t.seed(cache[t.table])); tables.forEach(t => t.show());
+    reachable = true; connect(); flush();
+  } else disconnect();
 }
 
 function loginError(e) {
