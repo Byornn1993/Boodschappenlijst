@@ -58,7 +58,7 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; z-index:
 body { background: transparent; color: var(--fg); font: 15px/1.45 var(--font-body);
   -webkit-font-smoothing: antialiased; font-feature-settings: "cv11","ss01"; }
 a { color: var(--accent); }
-.wrap { max-width: 540px; margin: 0 auto; padding-block: 22px 36px;
+.wrap { max-width: 540px; margin: 0 auto; padding-block: 22px 88px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   display: flex; flex-direction: column; gap: 16px; }
 header { display: flex; align-items: center; justify-content: space-between; gap: 10px 12px; flex-wrap: wrap; }
@@ -135,11 +135,14 @@ body.drag-active, body.drag-active * { cursor: grabbing !important; user-select:
   padding: 6px 12px; cursor: pointer; white-space: nowrap; }
 .toggle:hover { border-color: var(--accent); color: var(--fg); }
 .toggle.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
-.msg { font-size: .85rem; color: var(--champ); min-height: 1.2em; text-align: center; }
-.confirm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--card); border: 1px solid var(--card-line);
-  border-radius: var(--r); padding: 14px 16px; }
-.confirm span { flex: 1 1 200px; font-size: .92rem; }
-.confirm .btn { min-height: 40px; }
+/* Meldingen: vaste balk onderaan het scherm, boven de thuisbalk van de iPhone */
+.toast { position: fixed; z-index: 20; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  width: max-content; max-width: min(508px, calc(100% - 32px)); box-sizing: border-box; display: flex; align-items: center; gap: 12px;
+  background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 16px;
+  box-shadow: 0 10px 28px rgba(0,0,0,.35); font-size: .92rem; }
+.toast button { font: 600 .9rem var(--font-body); color: var(--accent); background: transparent; border: 1px solid var(--line);
+  border-radius: var(--r-sm); min-height: 40px; padding: 0 12px; margin-right: -6px; cursor: pointer; white-space: nowrap; }
+.toast button:hover { border-color: var(--accent); }
 
 /* Taken: gekoppelde lijst eronder als knop, tik = naar die lijst */
 .task { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -251,11 +254,6 @@ body:not(.out) #viewLogin { display: none !important; }
         <button class="btn ghost" id="btnFill">Vaste items op lijst</button>
         <button class="btn ghost" id="btnClear">Afgevinkte opruimen</button>
       </div>
-      <div class="confirm" id="confirmBox" hidden>
-        <span id="confirmText"></span>
-        <button class="btn" id="confirmYes">Ja</button>
-        <button class="btn ghost" id="confirmNo">Annuleer</button>
-      </div>
     </div>
   </section>
 
@@ -312,17 +310,25 @@ body:not(.out) #viewLogin { display: none !important; }
     </form>
   </section>
 
-  <p class="msg" id="msg"></p>
   <button class="toggle" id="btnLogout" type="button">Uitloggen</button>
 </div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden><span id="msg"></span><button id="btnUndo" type="button" hidden>Ongedaan maken</button></div>
 
 <script>
 let col = null, chCol = null, buyCol = null, taskCol = null;
-let items = [], challenges = [], buys = [], tasks = [], view = "task", busy = false, pending = null;
+let items = [], challenges = [], buys = [], tasks = [], view = "task", busy = false;
 const $ = id => document.getElementById(id);
 const eur = new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" });
 
-function say(t) { $("msg").textContent = t; if (t) setTimeout(() => { if ($("msg").textContent === t) $("msg").textContent = ""; }, 3500); }
+// Melding onderaan. Met undo erbij staat er 5 seconden een knop "Ongedaan maken".
+let msgTimer = null;
+function say(t, undo) {
+  clearTimeout(msgTimer);
+  $("msg").textContent = t || ""; $("toast").hidden = !t;
+  $("btnUndo").hidden = !undo;
+  $("btnUndo").onclick = undo ? () => { say(""); undo(); } : null;
+  if (t) msgTimer = setTimeout(() => say(""), undo ? 5000 : 3500);
+}
 function errText(e) {
   if (e && e.code === "23505") return "Deze naam bestaat al.";
   if (e && (e.status === 401 || e.code === "PGRST301" || e.code === "PGRST303")) return "Je bent uitgelogd. Log opnieuw in.";
@@ -474,8 +480,7 @@ function renderShopping() {
     const cb = checkbox("c-" + it.id, it.done, "Afvinken: " + it.name, v => w(() => col.doc(it.id).update({ done: v })));
     li.append(cb, nameLabel(cb.id, it.name));
     if (it.standard) { const t = document.createElement("span"); t.className = "tag"; t.textContent = "vast"; li.append(t); }
-    li.append(btn("", "✕", "Van lijst halen", () => w(() =>
-      it.standard ? col.doc(it.id).update({ onList: false, done: false }) : col.doc(it.id).delete())));
+    li.append(btn("", "✕", "Van lijst halen", () => removeWithUndo(col, [it], offList, `${it.name} van de lijst gehaald.`)));
     li.dataset.group = it.done ? "done" : "open";
     li.append(grip(li, it.done ? doneGroup : openGroup, it, "listOrder", col));
     ul.append(li);
@@ -490,7 +495,7 @@ function renderShopping() {
     tg.textContent = it.onList ? "Op lijst" : "Zet op lijst";
     tg.onclick = () => w(() => col.doc(it.id).update(it.onList ? { onList: false, done: false }
       : { onList: true, done: false, listOrder: nextOrder(items.filter(i => i.onList), "listOrder") }));
-    li.append(name, tg, btn("", "🗑", "Vast item verwijderen", () => w(() => col.doc(it.id).delete())));
+    li.append(name, tg, btn("", "🗑", "Vast item verwijderen", () => removeWithUndo(col, [it], null, `${it.name} verwijderd.`)));
     li.dataset.group = "std";
     li.append(grip(li, std, it, "stdOrder", col));
     us.append(li);
@@ -567,7 +572,7 @@ function taskLi(t, group) {
   }
   li.append(cb, box);
   if (!t.done) li.append(btn("", "✎", "Taak aanpassen", () => startEditTask(t)));
-  li.append(btn("", "🗑", "Taak verwijderen", () => w(() => taskCol.doc(t.id).delete())));
+  li.append(btn("", "🗑", "Taak verwijderen", () => removeWithUndo(taskCol, [t], null, "Taak verwijderd.")));
   if (!t.done) { li.dataset.group = "open"; li.append(grip(li, group, t, "sortOrder", taskCol)); }
   return li;
 }
@@ -663,7 +668,7 @@ function chLi(c, group) {
     li.append(cb, nameLabel(cb.id, c.name));
   }
   if (!c.done) li.append(btn("", "✎", "Challenge aanpassen", () => startEdit(c)));
-  li.append(btn("", "🗑", "Challenge verwijderen", () => ask(`Challenge "${c.name}" verwijderen?`, () => w(() => chCol.doc(c.id).delete()))));
+  li.append(btn("", "🗑", "Challenge verwijderen", () => removeWithUndo(chCol, [c], null, "Challenge verwijderd.")));
   if (!c.done) { li.dataset.group = "open"; li.append(grip(li, group, c, "sortOrder", chCol)); }
   return li;
 }
@@ -742,7 +747,7 @@ function buyLi(b, group) {
     s.setAttribute("aria-pressed", !!b.priority); li.append(s);
   }
   li.append(btn("", "✎", "Aanpassen", () => startEditBuy(b)));
-  li.append(btn("", "🗑", "Verwijderen", () => w(() => buyCol.doc(b.id).delete())));
+  li.append(btn("", "🗑", "Verwijderen", () => removeWithUndo(buyCol, [b], null, `${b.name} verwijderd.`)));
   if (!b.bought) { li.dataset.group = "open"; li.append(grip(li, group, b, "sortOrder", buyCol)); }
   return li;
 }
@@ -810,17 +815,20 @@ $("addBuy").onsubmit = async e => {
   await w(() => buyCol.add({ name, price, priority: false, bought: false, boughtAt: null, sortOrder: nextOrder(buys, "sortOrder"), created: Date.now() }));
 };
 
-function ask(text, fn) {
-  $("confirmText").textContent = text; pending = fn;
-  const box = $("confirmBox"); $("msg").before(box); box.hidden = false;
-}
-$("confirmNo").onclick = () => { $("confirmBox").hidden = true; pending = null; };
-$("confirmYes").onclick = async () => { $("confirmBox").hidden = true; const f = pending; pending = null; if (f) await f(); };
-
-async function bulk(list, fn, doneMsg) {
+async function bulk(list, fn, doneMsg, undo) {
   if (busy) return; busy = true;
-  try { for (const it of list) await fn(it); say(doneMsg); } catch (e) { say(errText(e)); } finally { busy = false; }
+  try { for (const it of list) await fn(it); say(doneMsg, undo); } catch (e) { say(errText(e)); } finally { busy = false; }
 }
+
+// Weghalen met "Ongedaan maken". patchFor geeft per regel een wijziging, of null om de regel te verwijderen.
+function removeWithUndo(store, list, patchFor, doneMsg) {
+  const steps = list.map(row => ({ row, patch: patchFor ? patchFor(row) : null }));
+  const back = s => Object.fromEntries(Object.keys(s.patch).map(k => [k, s.row[k] ?? null]));
+  bulk(steps, s => s.patch ? store.doc(s.row.id).update(s.patch) : store.doc(s.row.id).delete(), doneMsg,
+    () => bulk(steps, s => s.patch ? store.doc(s.row.id).update(back(s)) : store.restore(s.row.id), "Teruggezet."));
+}
+// Van de boodschappenlijst halen: een vast item blijft bewaard bij Vast, een los item wordt verwijderd.
+const offList = it => it.standard ? { onList: false, done: false } : null;
 $("btnFill").onclick = () => {
   if (!col) return;
   const todo = items.filter(i => i.standard && (!i.onList || i.done));
@@ -835,15 +843,13 @@ $("btnClearTasks").onclick = () => {
   if (!taskCol) return;
   const done = tasks.filter(t => t.done);
   if (!done.length) return;
-  ask(`${done.length === 1 ? "1 afgevinkte taak" : done.length + " afgevinkte taken"} verwijderen?`,
-    () => bulk(done, t => taskCol.doc(t.id).delete(), "Opgeruimd."));
+  removeWithUndo(taskCol, done, null, done.length === 1 ? "1 taak opgeruimd." : `${done.length} taken opgeruimd.`);
 };
 $("btnClear").onclick = () => {
   if (!col) return;
   const done = items.filter(i => i.onList && i.done);
   if (!done.length) { say("Er is nog niets afgevinkt."); return; }
-  ask(`${done.length} afgevinkt item(s) van de lijst halen? Vaste items blijven bewaard.`, () =>
-    bulk(done, it => it.standard ? col.doc(it.id).update({ onList: false, done: false }) : col.doc(it.id).delete(), "Opgeruimd."));
+  removeWithUndo(col, done, offList, done.length === 1 ? "1 item opgeruimd." : `${done.length} items opgeruimd.`);
 };
 
 // ── Supabase: gedeeld project met Be Strong, zie SUPABASE_SHARED.md
@@ -879,6 +885,7 @@ function fromRow(row) {
 // Zolang er nog iets verstuurd wordt, wordt ophalen uitgesteld, zodat een snelle tik niet wordt teruggedraaid.
 function collection(table, apply) {
   let rows = [], writing = 0, timer = null, loadId = 0;
+  const trash = new Map(); // verwijderde regels, voor "Ongedaan maken"
   const show = () => { apply(rows.filter(r => typeof r.name === "string")); render(); };
   const load = async () => {
     if (writing) return;
@@ -904,8 +911,15 @@ function collection(table, apply) {
     },
     doc: id => ({
       update: patch => write(r => r.map(x => x.id === id ? { ...x, ...patch } : x), () => sb.from(table).update(toRow(patch)).eq("id", id)),
-      delete: () => write(r => r.filter(x => x.id !== id), () => sb.from(table).delete().eq("id", id)),
+      delete: () => {
+        const row = rows.find(x => x.id === id); if (row) trash.set(id, row);
+        return write(r => r.filter(x => x.id !== id), () => sb.from(table).delete().eq("id", id));
+      },
     }),
+    restore(id) {
+      const row = trash.get(id); if (!row) return; trash.delete(id);
+      return write(r => [...r, row], () => sb.from(table).insert(toRow(row)));
+    },
   };
 }
 
@@ -994,7 +1008,7 @@ $("btnLogout").onclick = () => w(async () => { const { error } = await sb.auth.s
 
 if (sb) sb.auth.onAuthStateChange((_event, session) => { setTimeout(() => onSession(session)); });
 else { document.body.classList.remove("boot"); document.body.classList.add("out"); $("btnLogin").disabled = true;
-  $("msg").textContent = "De app kon niet laden. Controleer je verbinding en herlaad de pagina."; }
+  say("De app kon niet laden. Controleer je verbinding en herlaad de pagina."); clearTimeout(msgTimer); }
 render();
 </script>
 
