@@ -10,7 +10,7 @@ Persoonlijke app met vijf lijsten: Thuis (taken), Boodschappen, Vast, Challenges
 
 Alles staat in `index.html`, in deze volgorde:
 
-1. **Stijl:** huisstijlkleuren als tokens, donker standaard, licht via `prefers-color-scheme` of `data-theme`. De menubalk staat onderaan: op de telefoon over de volle breedte, op de laptop zwevend onder de kolom.
+1. **Stijl:** huisstijlkleuren als tokens, donker standaard, licht via `prefers-color-scheme` of `data-theme`. De menubalk staat onderaan: op de telefoon over de volle breedte, op de laptop tegen de onderrand, even breed als de kolom.
 2. **Algemeen:** `pref`/`keep` (instellingen en bewaarde gegevens op het toestel), `say` (melding onderaan, eventueel met "Ongedaan maken"), tabbladen en thema.
 3. **Regels in een lijst:** knoppen, vinkjes, vegen (`swipe`), tik op de regel, verslepen (`grip`, `reorder`).
 4. **Per lijst:** een `render…`-functie die de lijst tekent, plus aanpassen in de regel (`editForm`). Bij Boodschappen horen ook de afdelingen (`AISLES`) en de suggesties (`suggest`).

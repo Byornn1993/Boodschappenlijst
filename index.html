@@ -75,7 +75,8 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .theme:hover { border-color: var(--accent); }
 
 /* Menubalk vast onderaan met icoon, naam en een bolletje met het aantal open items.
-   Telefoon: over de volle breedte. Laptop: zwevend onder de kolom, even breed als de lijsten. */
+   Telefoon: over de volle breedte. Laptop: tegen de onderrand, even breed als de lijsten,
+   zodat er onder de balk niets van de lijst zichtbaar blijft. */
 .tabs { position: fixed; z-index: 15; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: 1fr 1.25fr .8fr 1fr 1fr; gap: 0;
   border-top: 1px solid var(--line); background: var(--surface); box-shadow: 0 -6px 20px rgba(0,0,0,.18);
   padding: 2px max(2px, env(safe-area-inset-right, 0px)) calc(2px + env(safe-area-inset-bottom, 0px)) max(2px, env(safe-area-inset-left, 0px)); }
@@ -94,12 +95,12 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 body .toast { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
 @media (min-width: 721px) {
-  .tabs { left: 50%; right: auto; transform: translateX(-50%); bottom: 16px; width: min(540px, calc(100% - 32px)); box-sizing: border-box;
-    border: 1px solid var(--line); border-radius: var(--r); padding: 4px; box-shadow: 0 10px 28px rgba(0,0,0,.28); }
+  .tabs { left: 50%; right: auto; transform: translateX(-50%); bottom: 0; width: min(540px, calc(100% - 32px)); box-sizing: border-box;
+    border: 1px solid var(--line); border-bottom: 0; border-radius: var(--r) var(--r) 0 0; padding: 4px 4px 8px; box-shadow: 0 -8px 24px rgba(0,0,0,.22); }
   .tabs button { font-size: 12px; min-height: 58px; }
   .tabs button[aria-selected="true"]::before { top: -4px; }
-  .wrap { padding-bottom: 120px; }
-  body .toast { bottom: 96px; }
+  .wrap { padding-bottom: 104px; }
+  body .toast { bottom: 88px; }
 }
 /* Tijdens het typen op een telefoon weg, zodat de balk niet boven het toetsenbord blijft hangen */
 @media (pointer: coarse) {
