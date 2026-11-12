@@ -37,6 +37,7 @@ Een gast-app verwijst nooit naar een tabel of functie van een andere app, ook ni
 | `lists_challenges` | Challenges | collectie `challenges` |
 | `lists_wishlist` | Later kopen | collectie `wishlist` |
 | `lists_tasks` | Taken (eventueel gekoppeld aan een lijst) | nieuw sinds migratie 004 |
+| `lists_households`, `lists_household_members`, `lists_invites` | Delen van Boodschappen en Vast. Alleen bereikbaar via de `lists_`-functies, niet direct | nieuw sinds migratie 005 |
 
 ---
 
