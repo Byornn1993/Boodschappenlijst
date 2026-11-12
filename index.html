@@ -106,6 +106,10 @@ body .toast { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
 @media (pointer: coarse) {
   body.typing .tabs { display: none; }
   body.typing .toast { bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+  /* Als de app op het beginscherm staat, zet iOS een vaste balk niet helemaal onderaan zolang de pagina korter is dan
+     het scherm (bv. een korte lijst). Daarom is de pagina op een telefoon altijd minstens een scherm hoog plus de
+     ruimte onderaan: dan gedraagt hij zich als een lange lijst en staat de balk wel tegen de onderrand. */
+  .wrap { min-height: 100vh; min-height: 100lvh; }
 }
 
 form.add { display: flex; gap: 8px; flex-wrap: wrap; }
