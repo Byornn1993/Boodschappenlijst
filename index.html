@@ -651,13 +651,39 @@ $("btnAisle").onclick = () => {
   renderShopping(); say(byAisle ? "Gesorteerd per afdeling." : "Weer je eigen volgorde.");
 };
 
-function renderShopping() {
+// Naam aanpassen bij Boodschappen of Vast. Het is hetzelfde item, dus de nieuwe naam geldt in beide lijsten.
+let editItem = null; // concept: { id, name, where: "list" | "std" }
+function startEditItem(it, where) {
+  editItem = { id: it.id, name: it.name, where };
+  renderShopping(true);
+  const n = $("ei-name"); if (n) { n.focus(); n.select(); }
+}
+function stopEditItem() { editItem = null; renderShopping(true); }
+function itemEditLi(it) {
+  const [ln, n] = field("ei-name", "Naam", editItem.name, true);
+  n.oninput = () => editItem.name = n.value;
+  return editForm([ln], stopEditItem, () => {
+    const name = editItem.name.trim();
+    if (!name) { say("Geef het item een naam."); return; }
+    const other = exists(name);
+    if (other && other.id !== it.id) { say(`${other.name} staat al in je lijsten.`); return; }
+    editItem = null;
+    if (name !== it.name) col.doc(it.id).update({ name });
+    say("Opgeslagen.");
+    renderShopping(true);
+  });
+}
+
+function renderShopping(force) {
   const onList = items.filter(i => i.onList).sort((a, b) => (a.done - b.done) || ord(a, b, "listOrder") || a.name.localeCompare(b.name, "nl"));
   const std = items.filter(i => i.standard).sort((a, b) => ord(a, b, "stdOrder") || a.name.localeCompare(b.name, "nl"));
   const openGroup = onList.filter(i => !i.done), doneGroup = onList.filter(i => i.done);
   const open = onList.filter(i => !i.done).length;
   $("cntList").textContent = open || "";
   $("cntStd").textContent = std.length || "";
+  if (editItem && !(editItem.where === "list" ? openGroup : std).some(i => i.id === editItem.id)) editItem = null;
+  // Tijdens het aanpassen niet opnieuw tekenen bij een sync, anders verlies je de focus in het invoerveld
+  if (editItem && !force && $("ei-name")) return;
 
   // Open items bovenaan, afgevinkte apart onder "In mandje".
   // Per afdeling: kopjes in de looprichting van de supermarkt; verslepen kan dan binnen een afdeling.
@@ -673,11 +699,13 @@ function renderShopping() {
   $("btnAisle").classList.toggle("on", byAisle); $("btnAisle").setAttribute("aria-pressed", byAisle);
   for (const it of seq) {
     if (it.head) { const h = document.createElement("li"); h.className = "aisle"; h.textContent = it.head; ul.append(h); continue; }
+    if (editItem && editItem.where === "list" && editItem.id === it.id) { ul.append(itemEditLi(it)); continue; }
     const li = document.createElement("li"); if (it.done) li.className = "done";
     const cb = checkbox("c-" + it.id, it.done, "Afvinken: " + it.name, v => col.doc(it.id).update({ done: v }));
     li.append(cb, nameLabel(cb.id, it.name));
     if (it.standard) { const t = document.createElement("span"); t.className = "tag"; t.textContent = "vast"; li.append(t); }
     const off = () => removeWithUndo(col, [it], offList, `${it.name} van de lijst gehaald.`);
+    if (!it.done) li.append(btn("", "✎", "Aanpassen: " + it.name, () => startEditItem(it, "list")));
     li.append(btn("", "✕", "Van lijst halen", off));
     swipe(li, { text: it.done ? "Terug op lijst" : "In mandje", tone: "pos", fn: () => col.doc(it.id).update({ done: !it.done }) },
       { text: "Van lijst", tone: "neg", fn: off });
@@ -692,6 +720,7 @@ function renderShopping() {
 
   const us = $("ulStd"); us.replaceChildren();
   for (const it of std) {
+    if (editItem && editItem.where === "std" && editItem.id === it.id) { us.append(itemEditLi(it)); continue; }
     const li = document.createElement("li");
     const name = document.createElement("span"); name.className = "name"; name.textContent = it.name;
     const tg = document.createElement("button"); tg.className = "toggle" + (it.onList ? " on" : "");
@@ -699,7 +728,7 @@ function renderShopping() {
     tg.onclick = () => col.doc(it.id).update(it.onList ? { onList: false, done: false }
       : { onList: true, done: false, listOrder: nextOrder(items.filter(i => i.onList), "listOrder") });
     const del = () => removeWithUndo(col, [it], null, `${it.name} verwijderd.`);
-    li.append(name, tg, btn("", "🗑", "Vast item verwijderen", del));
+    li.append(name, tg, btn("", "✎", "Aanpassen: " + it.name, () => startEditItem(it, "std")), btn("", "🗑", "Vast item verwijderen", del));
     swipe(li, { text: it.onList ? "Van lijst" : "Op lijst", tone: "pos", fn: tg.onclick }, { text: "Verwijderen", tone: "neg", fn: del });
     li.dataset.group = "std";
     li.append(grip(li, std, it, "stdOrder", col));
@@ -798,7 +827,7 @@ function field(id, label, value, wide) {
   const i = document.createElement("input"); i.id = id; i.value = value; i.autocomplete = "off";
   l.append(s, i); return [l, i];
 }
-// Aanpassen in de regel zelf (Thuis, Challenges, Later kopen): velden + Opslaan/Annuleer, Escape = annuleren.
+// Aanpassen in de regel zelf (alle lijsten): velden + Opslaan/Annuleer, Escape = annuleren.
 function editForm(fields, cancel, save) {
   const li = document.createElement("li"), f = document.createElement("form"); f.className = "edit";
   const ok = Object.assign(document.createElement("button"), { type: "submit", className: "btn", textContent: "Opslaan" });
