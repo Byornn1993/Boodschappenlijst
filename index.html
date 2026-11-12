@@ -248,9 +248,21 @@ li.done .price { color: var(--muted); }
 .login .fld { flex: none; }
 .login .btn { min-height: 46px; }
 .login .btn:disabled { opacity: .6; cursor: default; }
-#btnLogout { align-self: center; }
-body.boot .tabs, body.out .tabs, body.boot section, body.out section:not(#viewLogin),
-body.boot .sync, body.out .sync, body.boot #btnLogout, body.out #btnLogout, body.out #loading { display: none !important; }
+.foot { align-self: center; display: flex; gap: 8px; }
+body.boot .tabs, body.out .tabs, body.boot section, body.out section:not(#viewLogin), body.boot .foot, body.out .foot,
+body.boot .share, body.out .share, body.boot .invite, body.out .invite,
+body.boot .sync, body.out .sync, body.out #loading { display: none !important; }
+
+/* Delen: uitnodiging bovenaan (goud) en het blok Delen onderaan */
+.invite { display: flex; flex-direction: column; gap: 12px; border-radius: var(--r); padding: 16px 18px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 14%, var(--card)), var(--card));
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent); box-shadow: inset 0 2px 0 var(--accent); }
+.invite small { color: var(--accent); font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; font-weight: 600; }
+.invite p { margin: -6px 0 0; color: var(--fg); overflow-wrap: anywhere; }
+.share b { color: var(--fg); font-weight: 600; overflow-wrap: anywhere; }
+.share h2 { margin: 0; font: 600 15.5px var(--font-display); letter-spacing: -.01em; color: var(--fg); }
+.share .list li { justify-content: space-between; }
+.share .list li span { min-width: 0; overflow-wrap: anywhere; color: var(--muted); }
 #loading strong { margin: 0; }
 body:not(.out) #viewLogin { display: none !important; }
 </style>
@@ -273,6 +285,12 @@ body:not(.out) #viewLogin { display: none !important; }
     <button role="tab" id="tabStd" aria-selected="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg><span class="lbl">Vast</span> <span class="count" id="cntStd"></span></button>
     <button role="tab" id="tabCh" aria-selected="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg><span class="lbl">Challenges</span> <span class="count" id="cntCh"></span></button>
     <button role="tab" id="tabBuy" aria-selected="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg><span class="lbl">Later kopen</span> <span class="count" id="cntBuy"></span></button>
+  </div>
+
+  <div class="invite" id="inviteBox" role="status" hidden>
+    <small>Uitnodiging</small>
+    <p id="inviteText"></p>
+    <div class="actions"><button class="btn" id="btnAccept" type="button">Accepteren</button><button class="btn ghost" id="btnDecline" type="button">Weigeren</button></div>
   </div>
 
   <div class="empty" id="loading" role="status"><strong id="loadingText">Laden…</strong></div>
@@ -368,7 +386,21 @@ body:not(.out) #viewLogin { display: none !important; }
     </form>
   </section>
 
-  <button class="toggle" id="btnLogout" type="button">Uitloggen</button>
+  <div class="login share" id="shareBox" hidden>
+    <h2>Delen</h2>
+    <p id="shareText"></p>
+    <form class="add" id="shareForm" hidden>
+      <input id="inShare" type="email" placeholder="E-mailadres" aria-label="E-mailadres van wie je wilt uitnodigen" autocomplete="off" autocapitalize="none" spellcheck="false" enterkeyhint="send">
+      <button type="submit">Uitnodigen</button>
+    </form>
+    <ul class="list" id="ulShareSent" hidden></ul>
+    <button class="btn ghost" id="btnLeave" type="button" hidden>Stoppen met delen</button>
+  </div>
+
+  <div class="foot">
+    <button class="toggle" id="btnShare" type="button" aria-expanded="false">Delen</button>
+    <button class="toggle" id="btnLogout" type="button">Uitloggen</button>
+  </div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden><span id="msg"></span><button id="btnUndo" type="button" hidden>Ongedaan maken</button></div>
 
@@ -1079,7 +1111,7 @@ function toRow(data) {
 function fromRow(row) {
   const data = {};
   for (const [k, v] of Object.entries(row)) {
-    if (k === "user_id" || k === "updated_at") continue;
+    if (k === "user_id" || k === "household_id" || k === "updated_at") continue;
     const field = FIELDS[k] || k;
     data[field] = TIMES.has(field) && v != null ? Date.parse(v) : k === "price" && v != null ? Number(v) : v;
   }
@@ -1202,7 +1234,11 @@ function disconnect() {
 function connect() {
   disconnect(); showStatus();
   const ch = sb.channel(`lists-${userId}-${++channelNr}`);
-  for (const t of tables) ch.on("postgres_changes", { event: "*", schema: "public", table: t.table }, () => t.refresh());
+  for (const t of tables) ch.on("postgres_changes", { event: "*", schema: "public", table: t.table }, () => {
+    t.refresh();
+    // Uitnodiging verstuurd: accepteert de ander, dan veranderen de items. Dan ook "Gedeeld" tonen.
+    if (t === col && share && share.sent.length) loadShare();
+  });
   channel = ch;
   ch.subscribe(state => {
     if (ch !== channel) return;
@@ -1216,7 +1252,7 @@ function connect() {
 function resume() {
   if (!userId) return;
   if (!live || Date.now() - hiddenAt > 30000 && hiddenAt) connect(); else loadAll();
-  hiddenAt = 0; flush();
+  hiddenAt = 0; flush(); loadShare();
 }
 document.addEventListener("visibilitychange", () => { if (document.hidden) hiddenAt = Date.now(); else resume(); });
 window.addEventListener("pageshow", e => { if (e.persisted) resume(); });
@@ -1230,19 +1266,92 @@ if ("serviceWorker" in navigator && (location.protocol === "https:" || location.
 }
 window.addEventListener("offline", () => { live = false; reachable = false; showStatus(); });
 
+// ── Delen: Boodschappen en Vast samen met iemand anders. Thuis, Challenges en Later kopen blijven van jezelf.
+// De database bepaalt wie wat ziet (migratie 005). De app vraagt alleen de stand op en roept de functies aan.
+let share = null, shareBusy = false, leaveArmed = false;
+async function loadShare() {
+  if (!userId || !sb) return;
+  const uid = userId;
+  let res; try { res = await sb.rpc("lists_share_status"); } catch (e) { res = { error: e }; }
+  if (uid !== userId) return;
+  share = res.error ? null : res.data; renderShare();
+}
+const shareErr = e => e && e.code === "22023" ? e.message
+  : !navigator.onLine || !e || !e.status ? "Geen verbinding. Delen kan alleen met bereik." : "Dat lukte niet. Probeer het opnieuw.";
+async function shareCall(fn, args, okMsg) {
+  if (shareBusy) return false;
+  shareBusy = true;
+  let res; try { res = await sb.rpc(fn, args); } catch (e) { res = { error: e }; }
+  shareBusy = false;
+  say(res.error ? shareErr(res.error) : okMsg);
+  await loadShare();
+  return !res.error;
+}
+function renderShare() {
+  const s = share, others = s ? s.members.filter(m => !m.me) : [], inv = s && s.received[0];
+  $("inviteBox").hidden = !inv;
+  if (inv) $("inviteText").textContent = `${inv.from} wil Boodschappen en Vast met je delen. Thuis, Challenges en Later kopen blijven van jezelf.`;
+  $("btnShare").textContent = others.length ? "Gedeeld" : "Delen";
+  const text = $("shareText"); text.textContent = "";
+  if (!s) text.textContent = "Delen kan alleen met bereik. Probeer het opnieuw als je verbinding hebt.";
+  else if (others.length) {
+    text.append("Je deelt Boodschappen en Vast met ");
+    others.forEach((m, i) => { if (i) text.append(" en "); const b = document.createElement("b"); b.textContent = m.email; text.append(b); });
+    text.append(". Wat de een toevoegt of afvinkt, ziet de ander meteen. Thuis, Challenges en Later kopen blijven van jezelf.");
+  } else text.textContent = "Deel Boodschappen en Vast met iemand die een Be Strong-account heeft. Diegene ziet je uitnodiging bij het inloggen in deze app. Thuis, Challenges en Later kopen blijven van jezelf.";
+  $("shareForm").hidden = !s || others.length > 0;
+  const ul = $("ulShareSent"); ul.textContent = "";
+  for (const email of s && !others.length ? s.sent : []) {
+    const li = document.createElement("li"), span = document.createElement("span"), btn = document.createElement("button");
+    span.textContent = `${email} · wacht op antwoord`;
+    btn.className = "toggle"; btn.type = "button"; btn.textContent = "Intrekken";
+    btn.onclick = () => shareCall("lists_cancel_invite", { p_email: email }, "Uitnodiging ingetrokken.");
+    li.append(span, btn); ul.append(li);
+  }
+  ul.hidden = !ul.children.length;
+  $("btnLeave").hidden = !others.length;
+  $("btnLeave").textContent = leaveArmed ? "Zeker? Tik nog eens om te stoppen" : "Stoppen met delen";
+}
+$("btnShare").onclick = () => {
+  const open = $("shareBox").hidden;
+  $("shareBox").hidden = !open; $("btnShare").setAttribute("aria-expanded", open);
+  leaveArmed = false; renderShare();
+  if (open) { loadShare(); $("shareBox").scrollIntoView({ behavior: "smooth", block: "nearest" }); }
+};
+$("shareForm").onsubmit = async e => {
+  e.preventDefault();
+  const email = $("inShare").value.trim();
+  if (!email) return;
+  if (await shareCall("lists_invite", { p_email: email }, "Uitnodiging klaar. Diegene ziet hem bij het inloggen in deze app.")) $("inShare").value = "";
+};
+$("btnAccept").onclick = async () => {
+  const inv = share && share.received[0];
+  if (!inv) return;
+  await flush(); // eerst wat nog wacht opslaan, in je eigen lijst
+  if (await shareCall("lists_accept_invite", { p_id: inv.id }, "Je deelt nu Boodschappen en Vast.")) col.load();
+};
+$("btnDecline").onclick = () => { const inv = share && share.received[0]; if (inv) shareCall("lists_decline_invite", { p_id: inv.id }, "Uitnodiging geweigerd."); };
+$("btnLeave").onclick = async () => {
+  if (!leaveArmed) { leaveArmed = true; renderShare(); return; }
+  leaveArmed = false;
+  await flush();
+  if (await shareCall("lists_leave", {}, "Je deelt niet meer. Je houdt een eigen kopie van Boodschappen en Vast.")) col.load();
+};
+
 function onSession(session) {
   const id = session?.user?.id ?? null;
   document.body.classList.remove("boot");
   document.body.classList.toggle("out", !id);
-  if (id === userId) { if (id) { loadAll(); flush(); } return; }
+  if (id === userId) { if (id) { loadAll(); flush(); loadShare(); } return; }
   userId = id; clearTimeout(retryTimer);
+  share = null; leaveArmed = false; $("shareBox").hidden = true; $("btnShare").setAttribute("aria-expanded", false); renderShare();
   // Eerst wat er op dit toestel staat tonen (laatste lijsten + wachtende wijzigingen), daarna verbinden.
   queue = id ? keep.get("lists-queue-" + id) || [] : [];
   tables.forEach(t => t.clear());
   if (id) {
     const cache = keep.get("lists-cache-" + id) || {};
     tables.forEach(t => t.seed(cache[t.table])); tables.forEach(t => t.show());
-    reachable = true; connect(); flush();
+    reachable = true; connect(); flush(); loadShare();
   } else disconnect();
 }
 

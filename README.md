@@ -15,7 +15,8 @@ Alles staat in `index.html`, in deze volgorde:
 3. **Regels in een lijst:** knoppen, vinkjes, vegen (`swipe`), tik op de regel, verslepen (`grip`, `reorder`).
 4. **Per lijst:** een `render…`-functie die de lijst tekent, plus aanpassen in de regel (`editForm`). Bij Boodschappen horen ook de afdelingen (`AISLES`) en de suggesties (`suggest`).
 5. **Opslaan:** `collection()` per tabel. Wat je ziet = laatst opgehaalde data (`base`) + wachtende wijzigingen (`queue`). De wachtrij staat in localStorage en gaat via `flush()` op volgorde naar Supabase. Zonder bereik blijft hij bewaard.
-6. **Verbinding:** Realtime-kanaal, opnieuw verbinden als de app terugkomt van de achtergrond, inloggen en uitloggen.
+6. **Delen:** Boodschappen en Vast horen bij een huishouden (`lists_items.household_id`). Thuis, Challenges en Later kopen blijven van één gebruiker. Uitnodigen gaat op e-mailadres: de ander ziet de uitnodiging bij het inloggen en accepteert of weigert. De app roept alleen databasefuncties aan (`lists_share_status`, `lists_invite`, `lists_accept_invite`, …). Wie mag wat, staat in migratie 005.
+7. **Verbinding:** Realtime-kanaal, opnieuw verbinden als de app terugkomt van de achtergrond, inloggen en uitloggen.
 
 `sw.js` is de service worker. De pagina komt van het netwerk, en zonder bereik uit de cache. Iconen en het Supabase-script komen uit de cache. Verhoog `CACHE` als de lijst met bestanden verandert.
 
