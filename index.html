@@ -202,6 +202,30 @@ body.drag-active, body.drag-active * { cursor: grabbing !important; user-select:
 .sugg .chip .icon { min-height: 40px; min-width: 36px; margin-left: -8px; }
 .sugg .chip .icon svg.i { width: 15px; height: 15px; }
 
+/* Thuis: twee lijsten, Vandaag en Later. Telefoon: schakelaar bovenaan, één lijst tegelijk.
+   Laptop: beide naast elkaar; de pagina Thuis is daar breder dan de andere lijsten (body.wide). */
+#viewTask { display: flex; flex-direction: column; gap: 16px; }
+.panes { display: grid; gap: 16px; }
+.pane { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.seg { display: flex; gap: 4px; padding: 4px; border-radius: 14px; background: var(--card); border: 1px solid var(--card-line); }
+.seg button { flex: 1; min-height: 40px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); cursor: pointer;
+  font: 600 .9rem var(--font-body); }
+.seg button span:not(:empty)::before { content: " · "; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
+.pane-head { display: none; }
+@media (max-width: 720px) {
+  #viewTask[data-pane="today"] #paneLater, #viewTask[data-pane="later"] #paneToday { display: none; }
+}
+@media (min-width: 721px) {
+  body.wide .wrap { max-width: 960px; }
+  .seg { display: none; }
+  .panes { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .pane-head { display: flex; margin-bottom: -6px; }
+  .pane form.add { flex-wrap: nowrap; }
+  .pane form.add input { flex-basis: 0; }
+  .pane form.add select { flex: 0 1 128px; }
+}
+
 /* Taken: gekoppelde lijst eronder als knop, tik = naar die lijst */
 .task { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .task .name { flex: none; }
@@ -299,10 +323,16 @@ body:not(.out) #viewLogin { display: none !important; }
 
   <div class="empty" id="loading" role="status"><strong id="loadingText">Laden…</strong></div>
 
-  <section id="viewTask">
-    <div style="display:flex;flex-direction:column;gap:16px">
+  <section id="viewTask" data-pane="today">
+    <div class="seg" id="taskSeg" role="group" aria-label="Welke lijst">
+      <button type="button" id="segToday" aria-pressed="true">Vandaag<span id="segTodayN"></span></button>
+      <button type="button" id="segLater" aria-pressed="false">Later<span id="segLaterN"></span></button>
+    </div>
+    <div class="panes">
+    <div class="pane" id="paneToday">
+      <div class="section-label pane-head"><span>Vandaag</span><span id="headTodayN"></span></div>
       <form class="add" id="addTask">
-        <input id="inTask" placeholder="Nieuwe taak, bv. was ophangen" autocomplete="off" enterkeyhint="done">
+        <input id="inTask" placeholder="Nieuwe taak voor vandaag" aria-label="Nieuwe taak voor vandaag" autocomplete="off" enterkeyhint="done">
         <select id="inTaskLink" aria-label="Koppelen aan een lijst (optioneel)">
           <option value="">Geen lijst</option>
           <option value="list">Boodschappen</option>
@@ -312,9 +342,21 @@ body:not(.out) #viewLogin { display: none !important; }
         <button type="submit">Voeg toe</button>
       </form>
       <ul class="list" id="ulTaskOpen"></ul>
-      <div class="empty" id="emptyTask" hidden><strong>Niets te doen in huis</strong>Zet hier wat er thuis moet gebeuren. Koppel een taak aan een lijst, bv. winkelen aan Boodschappen, en je ziet meteen wat je nodig hebt.</div>
+      <div class="empty" id="emptyTask" hidden><strong>Niets te doen vandaag</strong>Zet hier wat er vandaag thuis moet gebeuren. Koppel een taak aan een lijst, bv. winkelen aan Boodschappen, en je ziet meteen wat je nodig hebt.</div>
       <div class="section-label done-head" id="lblTaskDone" hidden><span id="lblTaskDoneText">Klaar</span><button class="toggle" id="btnClearTasks" type="button">Opruimen</button></div>
       <ul class="list" id="ulTaskDone" hidden></ul>
+    </div>
+    <div class="pane" id="paneLater">
+      <div class="section-label pane-head"><span>Later</span><span id="headLaterN"></span></div>
+      <form class="add" id="addLater">
+        <input id="inLater" placeholder="Nieuwe taak voor later" aria-label="Nieuwe taak voor later" autocomplete="off" enterkeyhint="done">
+        <button type="submit">Voeg toe</button>
+      </form>
+      <ul class="list" id="ulLaterOpen"></ul>
+      <div class="empty" id="emptyLater" hidden><strong>Niets voor later</strong>Zet hier wat niet vandaag hoeft, bv. zolder opruimen. Met het pijltje zet je het naar Vandaag.</div>
+      <div class="section-label done-head" id="lblLaterDone" hidden><span id="lblLaterDoneText">Klaar</span><button class="toggle" id="btnClearLater" type="button">Opruimen</button></div>
+      <ul class="list" id="ulLaterDone" hidden></ul>
+    </div>
     </div>
   </section>
 
@@ -444,6 +486,7 @@ function setView(v) {
   view = v;
   for (const [k, [tab, sec]] of Object.entries(VIEWS)) { $(tab).setAttribute("aria-selected", k === v); $(sec).hidden = k !== v; }
   $("title").textContent = VIEWS[v][2];
+  document.body.classList.toggle("wide", v === "task"); // laptop: Thuis is breder, voor twee kolommen
   pref.set("lists-tab", v);
 }
 for (const [k, [tab]] of Object.entries(VIEWS)) $(tab).onclick = () => { if (view !== k) { setView(k); scrollTo(0, 0); } };
@@ -476,6 +519,8 @@ const ICONS = {
   "✕": '<path d="M18 6 6 18M6 6l12 12"/>',
   "🗑": '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',
   "✎": '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+  "→": '<path d="M5 12h14M13 6l6 6-6 6"/>',
+  "←": '<path d="M19 12H5M11 6l-6 6 6 6"/>',
   "grip": '<circle cx="9" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="15" cy="19" r="1.6"/>'
 };
 function btn(cls, label, title, fn) {
@@ -777,8 +822,10 @@ function taskEditLi(t) {
     if (!name) { say("Geef de taak een naam."); return; }
     const link = editTask.link || null;
     editTask = null;
-    taskCol.doc(t.id).update({ name, link });
-    say("Opgeslagen.");
+    // Een gekoppelde taak staat altijd bij Vandaag.
+    const toToday = link && t.later;
+    taskCol.doc(t.id).update({ name, link, ...(toToday ? { later: false, sortOrder: nextOrder(tasks.filter(x => !x.later), "sortOrder") } : {}) });
+    say(toToday ? `Opgeslagen. Gekoppeld aan ${LINKS[link]}, staat nu bij Vandaag.` : "Opgeslagen.");
     renderTasks(true);
   });
 }
@@ -803,25 +850,46 @@ function taskLi(t, group) {
   if (!t.done) li.append(btn("", "✎", "Taak aanpassen", () => startEditTask(t)));
   const del = () => removeWithUndo(taskCol, [t], null, "Taak verwijderd.");
   li.append(btn("", "🗑", "Taak verwijderen", del));
+  // Pijltje: naar de andere lijst, onderaan. Gekoppelde taken blijven bij Vandaag.
+  if (!t.done && !t.link) li.append(btn("move", t.later ? "←" : "→", t.later ? "Naar Vandaag" : "Naar Later", () => {
+    taskCol.doc(t.id).update({ later: !t.later, sortOrder: nextOrder(tasks.filter(x => !!x.later !== !!t.later), "sortOrder") });
+    say(t.later ? `${t.name} staat nu bij Vandaag.` : `${t.name} staat nu bij Later.`);
+  }));
   swipe(li, { text: t.done ? "Nog niet klaar" : "Klaar", tone: "pos", fn: () => cb.click() },
     { text: "Verwijderen", tone: "neg", fn: del });
   if (!t.done) { li.dataset.group = "open"; li.append(grip(li, group, t, "sortOrder", taskCol)); }
   return li;
 }
 
+// Twee lijsten met dezelfde opbouw: Vandaag (ids ulTask…) en Later (ids ulLater…).
+const PANES = [{ later: false, key: "Task", n: "Today" }, { later: true, key: "Later", n: "Later" }];
 function renderTasks(force) {
   const open = tasks.filter(t => !t.done).sort((a, b) => ord(a, b, "sortOrder") || a.created - b.created);
   const done = tasks.filter(t => t.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
-  $("cntTask").textContent = open.length || "";
+  $("cntTask").textContent = open.filter(t => !t.later).length || "";
   if (editTask && !open.some(t => t.id === editTask.id)) editTask = null;
   // Tijdens het aanpassen niet opnieuw tekenen bij een sync, anders verlies je de focus in het invoerveld
   if (editTask && !force && $("et-name")) return;
-  $("ulTaskOpen").replaceChildren(...open.map(t => taskLi(t, open)));
-  $("ulTaskDone").replaceChildren(...done.map(t => taskLi(t, done)));
-  $("ulTaskOpen").hidden = !open.length; $("emptyTask").hidden = !!tasks.length || !loaded;
-  $("ulTaskDone").hidden = $("lblTaskDone").hidden = !done.length;
-  $("lblTaskDoneText").textContent = `Klaar · ${done.length}`;
+  for (const p of PANES) {
+    const o = open.filter(t => !!t.later === p.later), d = done.filter(t => !!t.later === p.later), k = p.key;
+    $(`ul${k}Open`).replaceChildren(...o.map(t => taskLi(t, o)));
+    $(`ul${k}Done`).replaceChildren(...d.map(t => taskLi(t, d)));
+    $(`ul${k}Open`).hidden = !o.length; $(p.later ? "emptyLater" : "emptyTask").hidden = !!(o.length + d.length) || !loaded;
+    $(`ul${k}Done`).hidden = $(`lbl${k}Done`).hidden = !d.length;
+    $(`lbl${k}DoneText`).textContent = `Klaar · ${d.length}`;
+    $(`seg${p.n}N`).textContent = $(`head${p.n}N`).textContent = o.length || "";
+  }
 }
+
+// Telefoon: schakelaar Vandaag | Later. Onthouden op dit toestel.
+function setPane(p) {
+  $("viewTask").dataset.pane = p;
+  $("segToday").setAttribute("aria-pressed", p === "today"); $("segLater").setAttribute("aria-pressed", p === "later");
+  pref.set("lists-task-pane", p);
+}
+$("segToday").onclick = () => setPane("today");
+$("segLater").onclick = () => setPane("later");
+setPane(pref.get("lists-task-pane") === "later" ? "later" : "today");
 
 let editCh = null; // concept van de challenge die je nu aanpast: { id, name, goal, count }
 
@@ -1068,8 +1136,15 @@ $("addTask").onsubmit = e => {
   const name = $("inTask").value.trim(); if (!name) return;
   const chosen = $("inTaskLink").value, link = chosen || guessLink(name);
   $("inTask").value = ""; $("inTaskLink").value = "";
-  taskCol.add({ name, link, done: false, doneAt: null, sortOrder: nextOrder(tasks, "sortOrder"), created: Date.now() });
+  taskCol.add({ name, link, later: false, done: false, doneAt: null, sortOrder: nextOrder(tasks.filter(t => !t.later), "sortOrder"), created: Date.now() });
   if (link && !chosen) say(`Gekoppeld aan ${LINKS[link]}. Aanpassen kan met het potloodje.`);
+};
+// Later: zonder koppeling, gekoppelde taken horen bij Vandaag.
+$("addLater").onsubmit = e => {
+  e.preventDefault();
+  const name = $("inLater").value.trim(); if (!name) return;
+  $("inLater").value = "";
+  taskCol.add({ name, link: null, later: true, done: false, doneAt: null, sortOrder: nextOrder(tasks.filter(t => t.later), "sortOrder"), created: Date.now() });
 };
 $("addCh").onsubmit = e => {
   e.preventDefault();
@@ -1111,11 +1186,13 @@ $("btnFill").onclick = () => {
   bulk(todo, it => col.doc(it.id).update({ onList: true, done: false, ...(order.has(it.id) ? { listOrder: order.get(it.id) } : {}) }),
     `${todo.length} vaste item(s) op je lijst gezet.`);
 };
-$("btnClearTasks").onclick = () => {
-  const done = tasks.filter(t => t.done);
+const clearTasks = later => () => {
+  const done = tasks.filter(t => t.done && !!t.later === later);
   if (!done.length) return;
   removeWithUndo(taskCol, done, null, done.length === 1 ? "1 taak opgeruimd." : `${done.length} taken opgeruimd.`);
 };
+$("btnClearTasks").onclick = clearTasks(false);
+$("btnClearLater").onclick = clearTasks(true);
 $("btnClear").onclick = () => {
   const done = items.filter(i => i.onList && i.done);
   if (!done.length) { say("Er is nog niets afgevinkt."); return; }
@@ -1244,7 +1321,8 @@ const buyCol = collection("lists_wishlist", r => {
     priority: !!b.priority, bought: !!b.bought, created: b.created || 0 }));
 });
 const taskCol = collection("lists_tasks", r => {
-  tasks = r.map(t => ({ ...t, link: LINKS[t.link] ? t.link : null, done: !!t.done, created: t.created || 0 }));
+  tasks = r.map(t => { const link = LINKS[t.link] ? t.link : null;
+    return { ...t, link, later: !!t.later && !link, done: !!t.done, created: t.created || 0 }; });
 });
 const tables = [taskCol, col, chCol, buyCol];
 const loadAll = () => tables.forEach(t => t.load());
