@@ -9,3 +9,4 @@ Noteer hier de datum nadat een bestand is uitgevoerd in de SQL Editor van het Su
 | `003_volgorde.sql` | 2026-11-07 | Claude, via Chrome |
 | `004_taken.sql` | 2026-11-09 | Claude, via Chrome |
 | `005_delen.sql` | 2026-11-12 | Claude, via Chrome |
+| `006_taken_later.sql` | 2026-11-17 | Claude, via Chrome |
