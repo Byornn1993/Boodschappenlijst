@@ -204,7 +204,8 @@ body.drag-active, body.drag-active * { cursor: grabbing !important; user-select:
 
 /* Thuis: twee lijsten, Vandaag en Later. Telefoon: schakelaar bovenaan, één lijst tegelijk.
    Laptop: beide naast elkaar; de pagina Thuis is daar breder dan de andere lijsten (body.wide). */
-#viewTask { display: flex; flex-direction: column; gap: 16px; }
+/* Challenges werkt hetzelfde: Persoonlijk en Sales. */
+#viewTask, #viewCh { display: flex; flex-direction: column; gap: 16px; }
 .panes { display: grid; gap: 16px; }
 .pane { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .seg { display: flex; gap: 4px; padding: 4px; border-radius: 14px; background: var(--card); border: 1px solid var(--card-line); }
@@ -214,7 +215,8 @@ body.drag-active, body.drag-active * { cursor: grabbing !important; user-select:
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
 .pane-head { display: none; }
 @media (max-width: 720px) {
-  #viewTask[data-pane="today"] #paneLater, #viewTask[data-pane="later"] #paneToday { display: none; }
+  #viewTask[data-pane="today"] #paneLater, #viewTask[data-pane="later"] #paneToday,
+  #viewCh[data-pane="me"] #paneChSales, #viewCh[data-pane="sales"] #paneChMe { display: none; }
 }
 @media (min-width: 721px) {
   body.wide .wrap { max-width: 960px; }
@@ -224,6 +226,7 @@ body.drag-active, body.drag-active * { cursor: grabbing !important; user-select:
   .pane form.add { flex-wrap: nowrap; }
   .pane form.add input { flex-basis: 0; }
   .pane form.add select { flex: 0 1 128px; }
+  .pane form.add input.small { flex: 0 1 112px; }
 }
 
 /* Taken: gekoppelde lijst eronder als knop, tik = naar die lijst */
@@ -240,6 +243,8 @@ li.done .peek { display: none; }
 .ch { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
 .ch .row { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
 .ch .num { font-size: .82rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Telefoon: naast de naam staan veel knoppen, dus de stand onder de naam, zodat de naam de hele breedte heeft */
+@media (max-width: 420px) { .ch .row { flex-direction: column; align-items: flex-start; gap: 2px; } }
 .bar { height: 6px; border-radius: 999px; background: color-mix(in srgb, var(--champ) 12%, transparent); overflow: hidden; }
 .bar span { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
 li.done .bar span { background: var(--pos); }
@@ -390,10 +395,16 @@ body:not(.out) #viewLogin { display: none !important; }
     </div>
   </section>
 
-  <section id="viewCh" hidden>
-    <div style="display:flex;flex-direction:column;gap:16px">
+  <section id="viewCh" hidden data-pane="me">
+    <div class="seg" role="group" aria-label="Welke challenges">
+      <button type="button" id="segChMe" aria-pressed="true">Persoonlijk<span id="segChMeN"></span></button>
+      <button type="button" id="segChSales" aria-pressed="false">Sales<span id="segChSalesN"></span></button>
+    </div>
+    <div class="panes">
+    <div class="pane" id="paneChMe">
+      <div class="section-label pane-head"><span>Persoonlijk</span><span id="headChMeN"></span></div>
       <form class="add" id="addCh">
-        <input id="inCh" placeholder="Nieuwe challenge, bv. 30 dagen geen suiker" autocomplete="off" enterkeyhint="next">
+        <input id="inCh" placeholder="Nieuwe challenge, bv. 30 dagen geen suiker" aria-label="Nieuwe persoonlijke challenge" autocomplete="off" enterkeyhint="next">
         <input id="inChGoal" class="small" placeholder="Doel (aantal)" inputmode="numeric" autocomplete="off" enterkeyhint="done" aria-label="Doel, aantal keer of dagen (optioneel)">
         <button type="submit">Voeg toe</button>
       </form>
@@ -402,6 +413,20 @@ body:not(.out) #viewLogin { display: none !important; }
       <div class="empty" id="emptyCh" hidden><strong>Nog geen challenges</strong>Zet hier wat je jezelf uitdaagt. Geef een doel op, bv. 30, en tel elke dag met +1 tot je er bent.</div>
       <div class="section-label" id="lblChDone" hidden><span>Gehaald</span></div>
       <ul class="list" id="ulChDone" hidden></ul>
+    </div>
+    <div class="pane" id="paneChSales">
+      <div class="section-label pane-head"><span>Sales</span><span id="headChSalesN"></span></div>
+      <form class="add" id="addSales">
+        <input id="inSales" placeholder="Nieuwe sales challenge, bv. 10 offertes" aria-label="Nieuwe sales challenge" autocomplete="off" enterkeyhint="next">
+        <input id="inSalesGoal" class="small" placeholder="Doel (aantal)" inputmode="numeric" autocomplete="off" enterkeyhint="done" aria-label="Doel, aantal (optioneel)">
+        <button type="submit">Voeg toe</button>
+      </form>
+      <div class="section-label" id="lblSalesOpen"><span>Bezig</span></div>
+      <ul class="list" id="ulSalesOpen"></ul>
+      <div class="empty" id="emptySales" hidden><strong>Nog geen sales challenges</strong>Zet hier je doelen voor sales, bv. 10 offertes deze maand, en tel met +1 tot je er bent.</div>
+      <div class="section-label" id="lblSalesDone" hidden><span>Gehaald</span></div>
+      <ul class="list" id="ulSalesDone" hidden></ul>
+    </div>
     </div>
   </section>
 
@@ -486,7 +511,7 @@ function setView(v) {
   view = v;
   for (const [k, [tab, sec]] of Object.entries(VIEWS)) { $(tab).setAttribute("aria-selected", k === v); $(sec).hidden = k !== v; }
   $("title").textContent = VIEWS[v][2];
-  document.body.classList.toggle("wide", v === "task"); // laptop: Thuis is breder, voor twee kolommen
+  document.body.classList.toggle("wide", v === "task" || v === "ch"); // laptop: breder, voor twee kolommen
   pref.set("lists-tab", v);
 }
 for (const [k, [tab]] of Object.entries(VIEWS)) $(tab).onclick = () => { if (view !== k) { setView(k); scrollTo(0, 0); } };
@@ -978,6 +1003,8 @@ function chLi(c, group) {
   return li;
 }
 
+// Twee lijsten met dezelfde opbouw: Persoonlijk (ids …Ch…) en Sales (ids …Sales…).
+const CH_PANES = [{ sales: false, key: "Ch", n: "ChMe" }, { sales: true, key: "Sales", n: "ChSales" }];
 function renderChallenges(force) {
   const open = challenges.filter(c => !c.done).sort((a, b) => ord(a, b, "sortOrder") || a.created - b.created);
   const done = challenges.filter(c => c.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
@@ -985,12 +1012,26 @@ function renderChallenges(force) {
   if (editCh && !open.some(c => c.id === editCh.id)) editCh = null;
   // Tijdens het aanpassen niet opnieuw tekenen bij een sync, anders verlies je de focus in het invoerveld
   if (editCh && !force && $("ed-name")) return;
-  $("ulChOpen").replaceChildren(...open.map(c => chLi(c, open)));
-  $("ulChDone").replaceChildren(...done.map(c => chLi(c, done)));
-  $("ulChOpen").hidden = !open.length; $("lblChOpen").hidden = !open.length || !done.length;
-  $("emptyCh").hidden = !!challenges.length || !loaded;
-  $("ulChDone").hidden = $("lblChDone").hidden = !done.length;
+  for (const p of CH_PANES) {
+    const o = open.filter(c => !!c.sales === p.sales), d = done.filter(c => !!c.sales === p.sales), k = p.key;
+    $(`ul${k}Open`).replaceChildren(...o.map(c => chLi(c, o)));
+    $(`ul${k}Done`).replaceChildren(...d.map(c => chLi(c, d)));
+    $(`ul${k}Open`).hidden = !o.length; $(`lbl${k}Open`).hidden = !o.length || !d.length;
+    $(`empty${k}`).hidden = !!(o.length + d.length) || !loaded;
+    $(`ul${k}Done`).hidden = $(`lbl${k}Done`).hidden = !d.length;
+    $(`seg${p.n}N`).textContent = $(`head${p.n}N`).textContent = o.length || "";
+  }
 }
+
+// Telefoon: schakelaar Persoonlijk | Sales. Onthouden op dit toestel.
+function setChPane(p) {
+  $("viewCh").dataset.pane = p;
+  $("segChMe").setAttribute("aria-pressed", p === "me"); $("segChSales").setAttribute("aria-pressed", p === "sales");
+  pref.set("lists-ch-pane", p);
+}
+$("segChMe").onclick = () => setChPane("me");
+$("segChSales").onclick = () => setChPane("sales");
+setChPane(pref.get("lists-ch-pane") === "sales" ? "sales" : "me");
 
 // "249,99", "€ 1.299,00", "2.200" of "249.99" -> getal; leeg -> null; ongeldig -> NaN
 // Een punt gevolgd door precies drie cijfers is een duizendtal (Nederlands), anders een decimaalteken.
@@ -1146,14 +1187,18 @@ $("addLater").onsubmit = e => {
   $("inLater").value = "";
   taskCol.add({ name, link: null, later: true, done: false, doneAt: null, sortOrder: nextOrder(tasks.filter(t => t.later), "sortOrder"), created: Date.now() });
 };
-$("addCh").onsubmit = e => {
+// Nieuwe challenge, Persoonlijk (addCh) of Sales (addSales).
+const addChallenge = (form, nameId, goalId, sales) => $(form).onsubmit = e => {
   e.preventDefault();
-  const name = $("inCh").value.trim(); if (!name) return;
-  const raw = $("inChGoal").value.trim(), goal = raw ? parseInt(raw, 10) : null;
+  const name = $(nameId).value.trim(); if (!name) return;
+  const raw = $(goalId).value.trim(), goal = raw ? parseInt(raw, 10) : null;
   if (raw && !(goal > 0)) { say("Vul bij doel een heel getal in, bv. 30, of laat het leeg."); return; }
-  $("inCh").value = ""; $("inChGoal").value = "";
-  chCol.add({ name, goal, count: 0, done: false, doneAt: null, sortOrder: nextOrder(challenges, "sortOrder"), created: Date.now() });
+  $(nameId).value = ""; $(goalId).value = "";
+  chCol.add({ name, goal, count: 0, sales, done: false, doneAt: null,
+    sortOrder: nextOrder(challenges.filter(c => !!c.sales === sales), "sortOrder"), created: Date.now() });
 };
+addChallenge("addCh", "inCh", "inChGoal", false);
+addChallenge("addSales", "inSales", "inSalesGoal", true);
 $("addBuy").onsubmit = e => {
   e.preventDefault();
   const name = $("inBuy").value.trim(); if (!name) return;
@@ -1313,7 +1358,7 @@ const col = collection("lists_items", r => {
 const chCol = collection("lists_challenges", r => {
   challenges = r.map(c => {
     const goal = Number.isInteger(c.goal) && c.goal > 0 ? c.goal : null;
-    return { ...c, goal, count: Math.max(0, Number(c.count) || 0), done: !!c.done, created: c.created || 0 };
+    return { ...c, goal, count: Math.max(0, Number(c.count) || 0), sales: !!c.sales, done: !!c.done, created: c.created || 0 };
   });
 });
 const buyCol = collection("lists_wishlist", r => {
