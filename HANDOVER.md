@@ -134,7 +134,7 @@ B lists/
 | `lists_household_members` | Wie in welk huishouden zit (één per gebruiker) | `user_id`, `household_id` |
 | `lists_invites` | Openstaande uitnodigingen | `email`, `household_id`, `user_id` (wie uitnodigde) |
 
-- Elke tabel heeft `id`, `created_at`, `updated_at` (automatisch via trigger `lists_set_updated_at`).
+- De vier lijsttabellen hebben `id`, `user_id`, `created_at` en `updated_at` (automatisch via trigger `lists_set_updated_at`). De drie deel-tabellen hebben alleen `created_at`.
 - **Beveiliging:** RLS staat overal aan. Thuis, Challenges en Later kopen: alleen je eigen rijen (`user_id = auth.uid()`). Boodschappen en Vast: alle rijen van je huishouden (`household_id = lists_my_household()`). De drie deel-tabellen zijn niet rechtstreeks bereikbaar, alleen via de functies `lists_share_status`, `lists_invite`, `lists_cancel_invite`, `lists_decline_invite`, `lists_accept_invite` en `lists_leave`.
 - **Volgorde** in lijsten: getallen (`*_order`), bij verslepen krijgt een item het gemiddelde van zijn buren.
 - **Migraties:** `001` basis, `002` rechten, `003` volgorde, `004` Thuis, `005` Delen, `006` Vandaag/Later, `007` Persoonlijk/Sales. Alle zeven zijn op productie uitgevoerd (zie `LOG.md`).
@@ -188,7 +188,7 @@ Op het toestel (localStorage): `lists-auth` (login), `lists-queue-<gebruiker>` (
 2. **Controleren of Delen met Stéphanie echt werkt:** zijn ze één huishouden (query in sectie 2)? Zo niet: Bjorn nodigt opnieuw uit via **Delen**, Stéphanie accepteert op haar gsm.
 3. **Challenge verplaatsen tussen Persoonlijk en Sales** via het aanpasformulier (✎). Alleen app-code, geen databasewijziging.
 4. **Afdeling per item kunnen kiezen** (optioneel, vraagt migratie 008 met een kolom in `lists_items`).
-5. **README.md bijwerken** met Vandaag/Later en Persoonlijk/Sales in de uitleg van de structuur.
+5. **`SUPABASE_SHARED.md` bijwerken met Our Network** (prefix `net_`) in de tabel bovenaan, in deze repo én in die van Be Strong.
 
 ---
 

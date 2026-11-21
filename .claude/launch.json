@@ -2,9 +2,9 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "b-lists-test",
+      "name": "lists-test",
       "runtimeExecutable": "C:/Program Files/nodejs/node.exe",
-      "runtimeArgs": ["tools/test-server.mjs"],
+      "runtimeArgs": ["tests/test-server.mjs"],
       "port": 5181
     }
   ]
