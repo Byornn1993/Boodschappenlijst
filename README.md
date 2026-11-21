@@ -20,6 +20,10 @@ Alles staat in `index.html`, in deze volgorde:
 
 `sw.js` is de service worker. De pagina komt van het netwerk, en zonder bereik uit de cache. Iconen en het Supabase-script komen uit de cache. Verhoog `CACHE` als de lijst met bestanden verandert.
 
+Thuis (Vandaag en Later) en Challenges (Persoonlijk en Sales) hebben elk twee lijsten: op de telefoon met een schakelaar (`.seg`), op de laptop als twee kolommen (`.panes`, `body.wide`).
+
+Overdracht voor een nieuwe sessie: [HANDOVER.md](HANDOVER.md). Werkafspraken: [CLAUDE.md](CLAUDE.md).
+
 ## Testen
 
-Er is geen build en geen testpakket. Test lokaal met een nagebootste Supabase: dezelfde pagina, maar met een stub in plaats van het CDN-script. Controleer na het pushen de live versie met `?v=<commit>`, want GitHub Pages bewaart pagina's ongeveer 10 minuten.
+Er is geen build en geen testpakket. Test lokaal met een nagebootste Supabase: `node tests/test-server.mjs`, dan `/stub` of `/stub2` (wachtwoord `goed`). Migraties test je met `node tests/db/migratie-00X.mjs`. Controleer na het pushen de live versie met `?v=<commit>`, want GitHub Pages bewaart pagina's ongeveer 10 minuten.

@@ -1,0 +1,30 @@
+// PGlite (Postgres in Node) komt uit de map van Be Strong, naast deze map. Ander pad: zet PGLITE=<pad naar pglite/dist/index.js>.
+import { readdirSync, readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
+const { PGlite } = await import(process.env.PGLITE ? pathToFileURL(process.env.PGLITE).href : new URL('../../../Be strong/node_modules/@electric-sql/pglite/dist/index.js', import.meta.url).href);
+const dir = new URL('../../supabase/migrations/', import.meta.url);
+const read = f => readFileSync(new URL(f, dir), 'utf8');
+const B = 'b0000000-0000-4000-8000-00000000000b', S = 'c0000000-0000-4000-8000-00000000000c';
+let fails = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FOUT ') + m); if (!c) fails++; };
+const db = new PGlite();
+await db.exec(`create schema auth; create table auth.users (id uuid primary key, email text);
+create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claims', true)::jsonb ->> 'sub', '')::uuid $$;
+create role anon nologin; create role authenticated nologin;
+grant usage on schema public to anon, authenticated; grant usage on schema auth to anon, authenticated;
+grant execute on function auth.uid() to anon, authenticated; create publication supabase_realtime;
+insert into auth.users values ('${B}','b@test.nl'),('${S}','s@test.nl');`);
+for (const f of readdirSync(dir).filter(f => f.endsWith('.sql') && f < '007').sort()) await db.exec(read(f));
+await db.exec(`insert into lists_challenges (user_id, name, goal, count) values ('${B}','Lopen',30,4),('${B}','Geen suiker',null,0),('${S}','Haar challenge',null,0);`);
+await db.exec(read('007_challenges_sales.sql'));
+ok(true, '007 loopt zonder fout op bestaande challenges');
+const as = (uid, sql) => db.transaction(async tx => {
+  await tx.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: uid, role: 'authenticated' })]);
+  await tx.exec('set local role authenticated'); return (await tx.query(sql)).rows; });
+ok((await db.query('select count(*)::int n from lists_challenges')).rows[0].n === 3, 'geen challenges verloren');
+ok((await db.query('select count(*)::int n from lists_challenges where sales')).rows[0].n === 0, 'bestaande challenges bij Persoonlijk');
+ok((await db.query(`select count from lists_challenges where name='Lopen'`)).rows[0].count === 4, 'stand blijft bewaard');
+await as(B, `insert into lists_challenges (name, goal, sales) values ('10 offertes', 10, true)`);
+await as(B, `update lists_challenges set sales = true where name = 'Geen suiker'`);
+ok((await as(B, `select name from lists_challenges where sales order by name`)).map(r => r.name).join() === '10 offertes,Geen suiker', 'sales toevoegen en verplaatsen werkt');
+ok((await as(S, `select name from lists_challenges`)).map(r => r.name).join() === 'Haar challenge', 'Challenges blijven privé');
+console.log(fails ? `${fails} FOUT(EN)` : 'ALLES OK');
